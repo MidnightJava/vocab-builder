@@ -1,6 +1,6 @@
 # import requests
 
-# API_KEY = "6d61800c92mshbc418b3cb563f33p13d57cjsnab299adbc702"
+# API_KEY = "SECRET"
 # url = "https://microsoft-translator-text.p.rapidapi.com/languages"
 # querystring = {'api-version':'3.0'}
 # headers = {
@@ -23,7 +23,7 @@ import json
 conn = http.client.HTTPSConnection("microsoft-translator-text.p.rapidapi.com")
 
 headers = {
-    'X-RapidAPI-Key': "6d61800c92mshbc418b3cb563f33p13d57cjsnab299adbc702",
+    'X-RapidAPI-Key': API_KEY,
     'X-RapidAPI-Host': "microsoft-translator-text.p.rapidapi.com",
     }
 
