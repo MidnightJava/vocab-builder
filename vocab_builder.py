@@ -7,7 +7,10 @@ class VocabBuilder():
     def __init__(self):
         self.client = MSTranslatorClient()
         langs = self.client.get_languages()
-        print(langs)
+        print("{} languages found".format(len(langs)))
+
+        lang = self.client.detect_language("pomeriggio")
+        print (lang)
 
 if __name__ == "__main__":
     VocabBuilder()
