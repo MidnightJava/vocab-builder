@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+load_dotenv()
 
 from ms_translater_client import MSTranslatorClient
 
@@ -12,5 +13,6 @@ class VocabBuilder():
         lang = self.client.detect_language("pomeriggio")
         print (lang)
 
+print("Module Name: " + __name__)
 if __name__ == "__main__":
     VocabBuilder()

@@ -1,13 +1,15 @@
 import requests
 import os
+import sys
 import json
 import uuid
 
 from translator_client import TranslatorClient
-from dotenv import load_dotenv
 
-load_dotenv()
-API_KEY = os.environ["API_KEY"]
+API_KEY = os.getenv("API_KEY", None)
+if API_KEY is None:
+    print("You must specify an API key in the file .env")
+    sys.exit(0)
 endpoint = "https://api.cognitive.microsofttranslator.com"
 location = "eastus"
 params = {
