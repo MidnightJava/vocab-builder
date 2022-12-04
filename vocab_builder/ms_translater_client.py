@@ -29,7 +29,6 @@ class MSTranslatorClient(TranslatorClient):
         url = endpoint + path
         request = requests.get(url, params=params, headers=headers)
         response = request.json()
-        print(json.dumps(response, sort_keys=True, indent=4, ensure_ascii=False, separators=(',', ': ')))
         return response['translation']
 
     def detect_language(self, text):
@@ -39,6 +38,21 @@ class MSTranslatorClient(TranslatorClient):
             "text": "'" + text + "'"
         }]
         request = requests.post(url, headers=headers, json=body)
+        response = request.json()
+        print(json.dumps(response, sort_keys=True, indent=4, ensure_ascii=False, separators=(',', ': ')))
+        return response
+    
+    def translate(self, text):
+        path = '/translate?api-version=3.0'
+        url = endpoint + path
+        params = {
+            "from": "it",
+            "to": "en"
+        }
+        body = [{
+            "text": "'" + text + "'"
+        }]
+        request = requests.post(url, params=params, headers=headers, json=body)
         response = request.json()
         print(json.dumps(response, sort_keys=True, indent=4, ensure_ascii=False, separators=(',', ': ')))
         return response
