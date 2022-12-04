@@ -25,13 +25,11 @@ class VocabBuilder():
         elif kwargs.get("pr_word_cnt", None):
             words = self.get_vocab()
             print(f"{len(words)} words saved")
-            
-
-        # lang = self.client.detect_language("pomeriggio")
-        # print (lang)
+        else:
+            lang = self.client.detect_language("pomeriggio")
+            print (lang)
         
-        # self.client.translate("pomeriggio")
-        pass
+            self.client.translate("pomeriggio")
     
     def get_vocab(self):
         with open(self.vocab_filename, 'r') as f:
