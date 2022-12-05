@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
-load_dotenv()
+import os
+load_dotenv(dotenv_path=f"{os.environ['HOME']}{os.path.sep}/.env")
 
 import json
 from os.path import exists, sep
@@ -35,9 +36,9 @@ class VocabBuilder():
             vocab = self.get_vocab()
             print(f"{len(vocab)} {self.to_lang} TO {self.from_lang} words saved")
         elif kwargs.get("add_vocab", None):
-            self.run_add_vocab()
+            self.run_add_vocab(kwargs['no_trans_check'])
             
-    def run_add_vocab(self):
+    def run_add_vocab(self, no_trans_check):
         done = False
         new_words = []
         while not done:
@@ -51,10 +52,15 @@ class VocabBuilder():
                 else:
                     w_from = self.client.translate(self.to_lang, self.from_lang, w_to).lower()
                     if w_from and w_from != w_to:
-                        print(f"translation: {w_from}")
+                        if not no_trans_check:
+                            ans = input(f"translation: {w_from}   Enter to accept, or type a custom translation: ")
+                            if len(ans): w_from = ans
+                        else:
+                            print(f"translation: {w_from}")
                         new_words.append((w_from, w_to))
                     else:
-                        print("No translation found")
+                        ans = input("No translation found. Enter to skip, or type a custom translation: ")
+                        if len(ans): new_words.append((ans, w_to))
         self.merge_vocab(new_words)
         
     def get_vocab(self):
@@ -69,7 +75,7 @@ class VocabBuilder():
     def merge_vocab(self, new_words):
         vocab = self.get_vocab()
         for w_from, w_to in new_words:
-           vocab[w_to] = w_from
+           vocab[w_to] = {"text": w_from, "lastCorrect": "", "count": 0}
         self.set_vocab(vocab)
     
     def initialize_vocab(self):
@@ -111,6 +117,8 @@ if __name__ == "__main__":
     addGroup = parser.add_argument_group(title = "Add Vocabulary Options")
     addGroup.add_argument("-nl", "--no-word-lookup", action="store_true",
                          help="Give the translation of words instead of relying on an external translation service")
+    addGroup.add_argument("-ntc", "--no-trans-check", action="store_true",
+                         help="When using the -nl option, accept the translation without prompting for confirmation or override")
     
     testGroup = parser.add_argument_group(title = "Test Vocabulary Options")
     testGroup.add_argument("-cct", "--min-correct", type=int, default=5,
@@ -125,6 +133,7 @@ if __name__ == "__main__":
                          help="Name of the language you're learning. You must use one of the ID codes displayed with the --pal option unless--no-word-lookup option is selected")
     args = parser.parse_args()
     VocabBuilder(add_vocab = args.add_vocab,
+                 no_trans_check = args.no_trans_check,
                  test_vocab = args.test_vocab,
                  no_word_lookup = args.no_word_lookup,
                  min_correct = args.min_correct,

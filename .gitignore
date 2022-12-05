@@ -131,4 +131,4 @@ dmypy.json
 #vs code IDE
 .vscode
 
-data/
+data/*

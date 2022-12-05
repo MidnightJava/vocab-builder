@@ -9,7 +9,12 @@ from translator_client import TranslatorClient
 
 API_KEY = os.getenv("API_KEY", None)
 if API_KEY is None:
-    print("You must specify an API key in the file .env")
+    print("*** You must specify an API key ***.\nOne way to do this is to create a file named .env in your home directory, " +
+          "and insert this line: export API_KEY=\"<your API key>\". Get an API key here:  https://portal.azure.com/#home. " +
+          "Then create a free subscription to the Microsoft Translation Service at " +
+          "https://learn.microsoft.com/en-us/rest/api/cognitiveservices/translator/translator. You can skip this " +
+          "if you want to provide word translations manually instead of relying on an external service. In that case, " +
+          "launch the program with the -nl option.")
     sys.exit(0)
 endpoint = "https://api.cognitive.microsofttranslator.com"
 location = "eastus"
