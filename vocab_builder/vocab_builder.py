@@ -5,6 +5,7 @@ load_dotenv(dotenv_path=f"{os.environ['HOME']}{os.path.sep}/.env")
 import json
 from os.path import exists, sep
 import sys
+import readchar
 from collections import defaultdict
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from ms_translater_client import MSTranslatorClient
@@ -25,6 +26,8 @@ class VocabBuilder():
             self.check_langs()
         else:
             self.langs = {}
+            self.to_langname = self.to_lang
+            self.from_langname = self.from_lang
         
         if kwargs.get("pr_avail_langs", None):
             print("Available languages for translation")
@@ -39,19 +42,32 @@ class VocabBuilder():
             self.run_add_vocab(kwargs['no_trans_check'])
         elif kwargs["test_vocab"]:
             done = False
+            # self.selected_words = select_words()
             while not done:
-                word = self.next_word()
+                # word = self.next_word()
+                word = 'word'
+                ans = input(f"\nItalian word: {word} Press Enter to see translation, any other key plus Enter to quit")
+                if len(ans):
+                    done = True
+                    break
+                print("\nEnglish Translation: foo\n")
+                print("Press Enter if you knew the translation, any other key if you did not ")
+                c = readchar.readkey()
+                if c == '\n':
+                    print("Correct")
+                else:
+                    print("Missed it")
             
     def run_add_vocab(self, no_trans_check):
         done = False
         new_words = []
         while not done:
-            w_to = input(f"{self.to_lang} word (Enter to quit): ").lower()
+            w_to = input(f"{self.to_langname} word (Enter to quit): ").lower()
             if not len(w_to):
                 done = True
             else:
                 if len(self.langs) == 0:
-                    w_from = input(f"{self.from_lang} word: ").lower()
+                    w_from = input(f"{self.from_langname} word: ").lower()
                     new_words.append((w_from, w_to))
                 else:
                     w_from = self.client.translate(self.to_lang, self.from_lang, w_to).lower()
