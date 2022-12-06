@@ -37,6 +37,10 @@ class VocabBuilder():
             print(f"{len(vocab)} {self.to_lang} TO {self.from_lang} words saved")
         elif kwargs.get("add_vocab", None):
             self.run_add_vocab(kwargs['no_trans_check'])
+        elif kwargs["test_vocab"]:
+            done = False
+            while not done:
+                word = self.next_word()
             
     def run_add_vocab(self, no_trans_check):
         done = False
@@ -121,10 +125,12 @@ if __name__ == "__main__":
                          help="When using the -nl option, accept the translation without prompting for confirmation or override")
     
     testGroup = parser.add_argument_group(title = "Test Vocabulary Options")
-    testGroup.add_argument("-cct", "--min-correct", type=int, default=5,
+    testGroup.add_argument("-mc", "--min-correct", type=int, default=5,
                          help="Prioritize testing of words that have not been answered correctly this many times in a row")
-    testGroup.add_argument("-at", "--min-age", type=int, default=15,
+    testGroup.add_argument("-ma", "--min-age", type=int, default=15,
                          help="Prioritize testing of words that have not been tested for at least this many days")
+    testGroup.add_argument("-to", "--test-order", default="to-from", metavar="to-from | from-to",
+                         help="Present words in the language you're learning (default) or the language you already know")
     
     othGroup = parser.add_argument_group(title = "Other Options")
     othGroup.add_argument("-fl", "--from-lang", default="en",
@@ -138,6 +144,7 @@ if __name__ == "__main__":
                  no_word_lookup = args.no_word_lookup,
                  min_correct = args.min_correct,
                  min_age = args.min_age,
+                 test_order=args.test_order,
                  pr_word_cnt = args.pr_word_cnt,
                  pr_avail_langs = args.pr_avail_langs,
                  from_lang = args.from_lang,
