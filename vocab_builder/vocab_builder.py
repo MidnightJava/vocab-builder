@@ -7,6 +7,8 @@ from os.path import exists, sep
 import sys
 import readchar
 from collections import defaultdict
+from datetime import datetime
+from random import randint
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from ms_translater_client import MSTranslatorClient
 
@@ -17,6 +19,8 @@ class VocabBuilder():
     def __init__(self, **kwargs):
         self.from_lang = kwargs["from_lang"]
         self.to_lang = kwargs["to_lang"]
+        self.min_correct = kwargs['min_correct']
+        self.min_age= kwargs["min_age"]
         self.vocab_filename = f"{DATA_DIR}{sep}{kwargs['to_lang']}_{kwargs['from_lang']}_vocab"
         self.initialize_vocab()
         self.client = MSTranslatorClient()
@@ -37,15 +41,14 @@ class VocabBuilder():
                 print(f"{k}\t{v['name']}")
         elif kwargs.get("pr_word_cnt", None):
             vocab = self.get_vocab()
-            print(f"{len(vocab)} {self.to_lang} TO {self.from_lang} words saved")
+            print(f"{len(vocab)} {self.to_langname} TO {self.from_langname} words saved")
         elif kwargs.get("add_vocab", None):
             self.run_add_vocab(kwargs['no_trans_check'])
-        elif kwargs["test_vocab"]:
+        elif kwargs.get("test_vocab", None):
             done = False
-            # self.selected_words = select_words()
+            self.selected_words = self.select_words()
             while not done:
-                # word = self.next_word()
-                word = 'word'
+                word = self.next_word()
                 ans = input(f"\nItalian word: {word} Press Enter to see translation, any other key plus Enter to quit")
                 if len(ans):
                     done = True
@@ -57,7 +60,25 @@ class VocabBuilder():
                     print("Correct")
                 else:
                     print("Missed it")
-            
+    
+    def select_words(self):
+        def select(entry):
+            k,v = entry
+            if v["count"] <= self.min_correct:
+                return True
+            if not len(v["min_age"]):
+                return True
+            last_correct = datetime.fromisoformat(v['lastCorrect'])
+            delta_days = (datetime.now() - last_correct).days
+            return delta_days >= int(self["min_age"])
+        
+        vocab = dict(filter(select, self.get_vocab().items()))
+        return list(vocab.keys())
+    
+    def next_word(self):
+        idx = randint(0, len(self.selected_words) - 1)
+        return self.selected_words[idx]
+          
     def run_add_vocab(self, no_trans_check):
         done = False
         new_words = []
@@ -125,7 +146,7 @@ if __name__ == "__main__":
     mode_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument("-av", "--add-vocab", action="store_true",
                         help="Prompt repeatedly for new vocabulary words to be stored")
-    mode_group.add_argument("-tv", "--test-vocab", action="store_false",
+    mode_group.add_argument("-tv", "--test-vocab", action="store_true",
                          help="Present flashcard-style tests for stored vocabulary words")
     mode_group.add_argument("-pwc", "--pr-word-cnt", action="store_true",
                          help="Print the number of stored words and exit")
