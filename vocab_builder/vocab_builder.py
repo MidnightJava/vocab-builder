@@ -17,14 +17,11 @@ DATA_DIR = "data"
 class VocabBuilder():
 
     def __init__(self, **kwargs):
-        self.from_lang = kwargs["from_lang"]
-        self.to_lang = kwargs["to_lang"]
-        self.min_correct = kwargs['min_correct']
-        self.min_age= kwargs["min_age"]
-        self.vocab_filename = f"{DATA_DIR}{sep}{kwargs['to_lang']}_{kwargs['from_lang']}_vocab"
-        self.initialize_vocab()
+        for k,v in kwargs.items():
+            setattr(self, k, v)
+        self.vocab_filename = f"{DATA_DIR}{sep}{self.to_lang}_{self.from_lang}_vocab"
         self.client = MSTranslatorClient()
-        if not kwargs.get("no_word_lookup"):
+        if not self.no_word_lookup:
             langs = self.client.get_languages()
             self.langs = langs if langs else {}
             self.check_langs()
@@ -32,76 +29,102 @@ class VocabBuilder():
             self.langs = {}
             self.to_langname = self.to_lang
             self.from_langname = self.from_lang
+            
+        self.initialize_vocab()
         
-        if kwargs.get("pr_avail_langs", None):
+        if self.pr_avail_langs:
             print("Available languages for translation")
             print("Code\tName")
             # print(json.dumps(self.langs, sort_keys=True, indent=4, ensure_ascii=False, separators=(',', ': ')))
             for k,v in self.langs.items():
                 print(f"{k}\t{v['name']}")
-        elif kwargs.get("pr_word_cnt", None):
+        elif self.pr_word_cnt:
             vocab = self.get_vocab()
             print(f"{len(vocab)} {self.to_langname} TO {self.from_langname} words saved")
-        elif kwargs.get("add_vocab", None):
-            self.run_add_vocab(kwargs['no_trans_check'])
-        elif kwargs.get("test_vocab", None):
+        elif self.add_vocab:
+            self.run_add_vocab(self.no_trans_check)
+        elif self.test_vocab:
             done = False
+            lang1 = {"id": self.from_lang, "name": self.from_langname}
+            lang2 = {"id": self.to_lang, "name": self.to_langname}
+            if self.word_order == "from-to":
+                [lang1, lang2] = [lang2, lang1]
             self.selected_words = self.select_words()
             while not done:
                 word = self.next_word()
-                ans = input(f"\nItalian word: {word} Press Enter to see translation, any other key plus Enter to quit")
+                ans = input(f"\n{lang2['name']} word: {word} Press Enter to see translation, any other key plus Enter to quit")
                 if len(ans):
                     done = True
                     break
-                print("\nEnglish Translation: foo\n")
+                trans = self.client.translate(lang2['id'], lang1['id'], word)
+                print(f"\n{lang1['name']} Translation: {trans}\n")
                 print("Press Enter if you knew the translation, any other key if you did not ")
                 c = readchar.readkey()
                 if c == '\n':
                     print("Correct")
+                    self.mark_correct(word if self.word_order == 'to-from' else trans)
                 else:
                     print("Missed it")
     
     def select_words(self):
         def select(entry):
             k,v = entry
+            if k == 'meta':
+                return False
             if v["count"] <= self.min_correct:
                 return True
             if not len(v["min_age"]):
                 return True
             last_correct = datetime.fromisoformat(v['lastCorrect'])
             delta_days = (datetime.now() - last_correct).days
-            return delta_days >= int(self["min_age"])
+            return delta_days >= int(self.min_age)
         
         vocab = dict(filter(select, self.get_vocab().items()))
-        return list(vocab.keys())
+        if self.word_order == "from-to":
+                return list(map( lambda v: v['text'], filter(lambda k: k != "meta", vocab.values())))
+        else:
+            return list(filter(lambda k: k != "meta", vocab.keys()))
     
     def next_word(self):
         idx = randint(0, len(self.selected_words) - 1)
         return self.selected_words[idx]
+    
+    def mark_correct(self, word):
+        print(f"{word} is correct")
           
     def run_add_vocab(self, no_trans_check):
         done = False
         new_words = []
+        lang1 = {"id": self.to_lang, "name": self.to_langname}
+        lang2 = {"id": self.from_lang, "name": self.from_langname}
+        if self.word_order == "from-to":
+            [lang1, lang2] = [lang2, lang1]
         while not done:
-            w_to = input(f"{self.to_langname} word (Enter to quit): ").lower()
-            if not len(w_to):
+            w_1 = input(f"{lang1['name']} word (Enter to quit): ").lower()
+            if not len(w_1):
                 done = True
             else:
                 if len(self.langs) == 0:
-                    w_from = input(f"{self.from_langname} word: ").lower()
-                    new_words.append((w_from, w_to))
+                    w_2 = input(f"{lang2['name']} word: ").lower()
+                    if self.word_order == "from-to":
+                         new_words.append((w_1, w_2))
+                    else:
+                        new_words.append((w_2, w_1))
                 else:
-                    w_from = self.client.translate(self.to_lang, self.from_lang, w_to).lower()
-                    if w_from and w_from != w_to:
+                    w_2 = self.client.translate(lang1["id"], lang2["id"], w_1).lower()
+                    if w_2 and w_2 != w_1:
                         if not no_trans_check:
-                            ans = input(f"translation: {w_from}   Enter to accept, or type a custom translation: ")
-                            if len(ans): w_from = ans
+                            ans = input(f"translation: {w_2}   Enter to accept, or type a custom translation: ")
+                            if len(ans): w_2 = ans
                         else:
-                            print(f"translation: {w_from}")
-                        new_words.append((w_from, w_to))
+                            print(f"translation: {w_2}")
+                        if self.word_order == "from-to":
+                             new_words.append((w_1, w_2))
+                        else:     
+                            new_words.append((w_2, w_1))
                     else:
                         ans = input("No translation found. Enter to skip, or type a custom translation: ")
-                        if len(ans): new_words.append((ans, w_to))
+                        if len(ans): new_words.append((ans, w_1))
         self.merge_vocab(new_words)
         
     def get_vocab(self):
@@ -122,7 +145,12 @@ class VocabBuilder():
     def initialize_vocab(self):
         if not exists(self.vocab_filename):
             with open(self.vocab_filename, 'a') as f:
-                f.write(json.dumps({}))
+                f.write(json.dumps({"meta": {
+                    "val_lang": f"{self.from_lang}",
+                    "val_langname": f"{self.from_langname}",
+                    "key_lang": f"{self.to_lang}",
+                    "key_langname": f"{self.to_langname}"
+                }}))
                 
     def check_langs(self):
         found_from = found_to = False
@@ -157,23 +185,25 @@ if __name__ == "__main__":
     
     addGroup = parser.add_argument_group(title = "Add Vocabulary Options")
     addGroup.add_argument("-nl", "--no-word-lookup", action="store_true",
-                         help="Give the translation of words instead of relying on an external translation service")
+                         help="Manually specify the translation of words instead of relying on the external translation service")
     addGroup.add_argument("-ntc", "--no-trans-check", action="store_true",
-                         help="When using the -nl option, accept the translation without prompting for confirmation or override")
+                         help="When using the external translation service, accept the translation without prompting for confirmation or override")
     
     testGroup = parser.add_argument_group(title = "Test Vocabulary Options")
     testGroup.add_argument("-mc", "--min-correct", type=int, default=5,
                          help="Prioritize testing of words that have not been answered correctly this many times in a row")
     testGroup.add_argument("-ma", "--min-age", type=int, default=15,
                          help="Prioritize testing of words that have not been tested for at least this many days")
-    testGroup.add_argument("-to", "--test-order", default="to-from", metavar="to-from | from-to",
-                         help="Present words in the language you're learning (default) or the language you already know")
+    
     
     othGroup = parser.add_argument_group(title = "Other Options")
     othGroup.add_argument("-fl", "--from-lang", default="en",
                          help="Name of the language you know. You must use one of the ID codes displayed with the --pal option unless--no-word-lookup option is selected")
     othGroup.add_argument("-tl", "--to-lang", default="it",
                          help="Name of the language you're learning. You must use one of the ID codes displayed with the --pal option unless--no-word-lookup option is selected")
+    othGroup.add_argument("-wo", "--word-order", default="to-from", metavar="to-from | from-to",
+                         help="Present words in the language you're learning (default) or the language you already know")
+    
     args = parser.parse_args()
     VocabBuilder(add_vocab = args.add_vocab,
                  no_trans_check = args.no_trans_check,
@@ -181,7 +211,7 @@ if __name__ == "__main__":
                  no_word_lookup = args.no_word_lookup,
                  min_correct = args.min_correct,
                  min_age = args.min_age,
-                 test_order=args.test_order,
+                 word_order=args.word_order,
                  pr_word_cnt = args.pr_word_cnt,
                  pr_avail_langs = args.pr_avail_langs,
                  from_lang = args.from_lang,
