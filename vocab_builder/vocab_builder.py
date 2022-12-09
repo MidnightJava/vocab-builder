@@ -7,7 +7,7 @@ from os.path import exists, sep
 import sys
 import readchar
 from collections import defaultdict
-from datetime import datetime
+from datetime import date
 from random import randint
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from ms_translater_client import MSTranslatorClient
@@ -52,6 +52,10 @@ class VocabBuilder():
             self.selected_words = self.select_words()
             while not done:
                 word = self.next_word()
+                if word is None:
+                    print("No more words to review for this round")
+                    done = True
+                    continue
                 ans = input(f"\n{lang2['name']} word: {word} Press Enter to see translation, any other key plus Enter to quit")
                 if len(ans):
                     done = True
@@ -61,10 +65,8 @@ class VocabBuilder():
                 print("Press Enter if you knew the translation, any other key if you did not ")
                 c = readchar.readkey()
                 if c == '\n':
-                    print("Correct")
                     self.mark_correct(word if self.word_order == 'to-from' else trans)
-                else:
-                    print("Missed it")
+                    self.selected_words.remove(word if self.word_order == 'to-from' else trans)
     
     def select_words(self):
         def select(entry):
@@ -75,8 +77,8 @@ class VocabBuilder():
                 return True
             if not len(v["min_age"]):
                 return True
-            last_correct = datetime.fromisoformat(v['lastCorrect'])
-            delta_days = (datetime.now() - last_correct).days
+            last_correct = date.fromisoformat(v['lastCorrect'])
+            delta_days = (date.today() - last_correct).days
             return delta_days >= int(self.min_age)
         
         vocab = dict(filter(select, self.get_vocab().items()))
@@ -86,11 +88,17 @@ class VocabBuilder():
             return list(filter(lambda k: k != "meta", vocab.keys()))
     
     def next_word(self):
+        if not len(self.selected_words):
+            return None
         idx = randint(0, len(self.selected_words) - 1)
         return self.selected_words[idx]
     
     def mark_correct(self, word):
-        print(f"{word} is correct")
+        vocab = self.get_vocab()
+        entry = vocab[word]
+        entry['count']+= 1
+        entry['lastCorrect'] = date.today().isoformat()
+        self.set_vocab(vocab)
           
     def run_add_vocab(self, no_trans_check):
         done = False
@@ -180,6 +188,8 @@ if __name__ == "__main__":
                          help="Print the number of stored words and exit")
     mode_group.add_argument("-pal", "--pr-avail-langs", action="store_true",
                          help="Print the available languages and exit.  Used only if the --no-word-lookup option is not selected.")
+    mode_group.add_argument("-iv", "--import-vocab", type="string",
+                         help="Path to csv file with vocabulary words to be imported")
     mode_group.add_argument("-h", "--help", action="help",
                          help="Show this help message and exit")
     
@@ -208,6 +218,7 @@ if __name__ == "__main__":
     VocabBuilder(add_vocab = args.add_vocab,
                  no_trans_check = args.no_trans_check,
                  test_vocab = args.test_vocab,
+                 import_vocab = args.import_vocab,
                  no_word_lookup = args.no_word_lookup,
                  min_correct = args.min_correct,
                  min_age = args.min_age,
