@@ -72,6 +72,26 @@ class MSTranslatorClient(TranslatorClient):
             return re.sub("^'", "", re.sub("'$", "", text))
         except:
             return None
+        
+    def get_subscription_status(self):
+        path = '/translate?api-version=3.0'
+        url = endpoint + path
+        params = {
+            "from": "en",
+            "to": "es"
+        }
+        body = [{
+            "text": "'house'"
+        }]
+        try:
+            request = requests.post(url, params=params, headers=headers, json=body, timeout=5.0)
+            response = request.json()
+            hdrs = request.headers
+            print(hdrs)
+            
+        except Exception as e:
+            print(e.args)
+            return None
 
 """
 resp.text when not subscribed

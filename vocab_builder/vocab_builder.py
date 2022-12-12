@@ -6,6 +6,7 @@ import json
 from os.path import exists, sep
 import sys
 import readchar
+import csv
 from collections import defaultdict
 from datetime import date
 from random import randint
@@ -41,32 +42,81 @@ class VocabBuilder():
         elif self.pr_word_cnt:
             vocab = self.get_vocab()
             print(f"{len(vocab)} {self.to_langname} TO {self.from_langname} words saved")
+        elif self.import_vocab:
+            self.import_vocab_file(self.import_vocab)
         elif self.add_vocab:
             self.run_add_vocab(self.no_trans_check)
         elif self.test_vocab:
-            done = False
-            lang1 = {"id": self.from_lang, "name": self.from_langname}
-            lang2 = {"id": self.to_lang, "name": self.to_langname}
-            if self.word_order == "from-to":
-                [lang1, lang2] = [lang2, lang1]
-            self.selected_words = self.select_words()
-            while not done:
-                word = self.next_word()
-                if word is None:
-                    print("No more words to review for this round")
-                    done = True
-                    continue
-                ans = input(f"\n{lang2['name']} word: {word} Press Enter to see translation, any other key plus Enter to quit")
-                if len(ans):
-                    done = True
-                    break
-                trans = self.client.translate(lang2['id'], lang1['id'], word)
-                print(f"\n{lang1['name']} Translation: {trans}\n")
-                print("Press Enter if you knew the translation, any other key if you did not ")
-                c = readchar.readkey()
-                if c == '\n':
-                    self.mark_correct(word if self.word_order == 'to-from' else trans)
-                    self.selected_words.remove(word if self.word_order == 'to-from' else trans)
+            self.run_test_vocab()
+    
+    def run_test_vocab(self):        
+        done = False
+        lang1 = {"id": self.from_lang, "name": self.from_langname}
+        lang2 = {"id": self.to_lang, "name": self.to_langname}
+        if self.word_order == "from-to":
+            [lang1, lang2] = [lang2, lang1]
+        self.selected_words = self.select_words()
+        while not done:
+            word = self.next_word()
+            if word is None:
+                print("No more words to review for this round")
+                done = True
+                continue
+            ans = input(f"\n{lang2['name']} word: {word}\n\nPress Enter to see translation, any other key plus Enter to quit")
+            if len(ans):
+                done = True
+                break
+            trans = self.client.translate(lang2['id'], lang1['id'], word)
+            print(f"\n{lang1['name']} Translation: {trans}\n")
+            print("Press Enter if you knew the translation, any other key if you did not ")
+            c = readchar.readkey()
+            if c == '\n':
+                self.mark_correct(word if self.word_order == 'to-from' else trans)
+                self.selected_words.remove(word if self.word_order == 'to-from' else trans)
+    
+    def import_vocab_file(self, filename):
+        #Assumes the first column is the TO language and the second column is the FROM language
+        with open(filename, mode='r') as file:
+            csvFile = csv.reader(file)
+            missed_translation = False
+            untranslated_words = set()
+            translated_words = []
+            print(f"{len(file.readlines())} words to import")
+            file.seek(0)
+            for row in csvFile:
+                if row[0] and not row[1]:
+                    if not self.no_word_lookup:
+                        row[1] = self.client.translate(self.to_lang, self.from_lang, row[0])
+                    if not row[1]:
+                        missed_translation = True
+                        untranslated_words.add(row[0])
+                    else:
+                        translated_words.append((row[0], row[1]))
+                elif row[1] and not row[0]:
+                    if not self.no_word_lookup:
+                        row[0] = self.client.translate(self.from_lang, self.to_lang, row[1])
+                    if not row[0]:
+                        missed_translation = True
+                        untranslated_words.add(row[1])
+                    else:
+                        translated_words.append((row[0], row[1]))
+                else:
+                    translated_words.append((row[0], row[1]))
+            if missed_translation:
+                print("The following words were not imported because a translation could not be determined and was not explicitly provided")
+                for w in untranslated_words: print(w)
+            
+            vocab = self.get_vocab()
+            for w1, w2 in translated_words:
+                vocab[w1] = {
+                    "text": w2,
+                    "lastCorrect": "",
+                    "count": 0
+                }
+            self.set_vocab(vocab)
+            print(f"{len(translated_words)} words imnported")
+                
+                
     
     def select_words(self):
         def select(entry):
@@ -138,7 +188,7 @@ class VocabBuilder():
     def get_vocab(self):
         with open(self.vocab_filename, 'r') as f:
             contents = f.read()
-            return  defaultdict(list, json.loads(contents))
+            return  json.loads(contents)
         
     def set_vocab(self, vocab):
         with open(self.vocab_filename, 'w') as f:
@@ -188,7 +238,7 @@ if __name__ == "__main__":
                          help="Print the number of stored words and exit")
     mode_group.add_argument("-pal", "--pr-avail-langs", action="store_true",
                          help="Print the available languages and exit.  Used only if the --no-word-lookup option is not selected.")
-    mode_group.add_argument("-iv", "--import-vocab", type="string",
+    mode_group.add_argument("-iv", "--import-vocab", type=str,
                          help="Path to csv file with vocabulary words to be imported")
     mode_group.add_argument("-h", "--help", action="help",
                          help="Show this help message and exit")
