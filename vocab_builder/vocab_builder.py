@@ -22,7 +22,7 @@ class VocabBuilder():
             setattr(self, k, v)
         self.vocab_filename = f"{DATA_DIR}{sep}{self.to_lang}_{self.from_lang}_vocab"
         self.client = MSTranslatorClient()
-        if not self.no_word_lookup:
+        if not self.no_word_lookup: 
             langs = self.client.get_languages()
             self.langs = langs if langs else {}
             self.check_langs()

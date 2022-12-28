@@ -2,3 +2,5 @@ python-dotenv
 requests
 uuid
 readchar
+flask
+json
