@@ -1,3 +1,5 @@
+#!/bin/env python3
+
 from dotenv import load_dotenv
 import os
 load_dotenv(dotenv_path=f"{os.environ['HOME']}{os.path.sep}/.env")
@@ -33,21 +35,30 @@ class VocabBuilder():
             
         self.initialize_vocab()
         
-        if self.pr_avail_langs:
-            print("Available languages for translation")
-            print("Code\tName")
-            # print(json.dumps(self.langs, sort_keys=True, indent=4, ensure_ascii=False, separators=(',', ': ')))
-            for k,v in self.langs.items():
-                print(f"{k}\t{v['name']}")
-        elif self.pr_word_cnt:
-            vocab = self.get_vocab()
-            print(f"{len(vocab)} {self.to_langname} TO {self.from_langname} words saved")
-        elif self.import_vocab:
-            self.import_vocab_file(self.import_vocab)
-        elif self.add_vocab:
-            self.run_add_vocab(self.no_trans_check)
-        elif self.test_vocab:
-            self.run_test_vocab()
+        if self.cli_launch:
+        
+            if self.pr_avail_langs:
+                print("Available languages for translation")
+                print("Code\tName")
+                # print(json.dumps(self.langs, sort_keys=True, indent=4, ensure_ascii=False, separators=(',', ': ')))
+                for lang in self.get_avail_langs():
+                    print(lang)
+                
+            elif self.pr_word_cnt:
+                vocab = self.get_vocab()
+                print(f"{len(vocab)} {self.to_langname} TO {self.from_langname} words saved")
+            elif self.import_vocab:
+                self.import_vocab_file(self.import_vocab)
+            elif self.add_vocab:
+                self.run_add_vocab(self.no_trans_check)
+            elif self.test_vocab:
+                self.run_test_vocab()
+            
+    def get_avail_langs(self):
+        resp = []
+        for k,v in self.langs.items():
+            resp.append(f"{k}\t{v['name']}")
+        return resp
     
     def run_test_vocab(self):        
         done = False
@@ -276,4 +287,6 @@ if __name__ == "__main__":
                  pr_word_cnt = args.pr_word_cnt,
                  pr_avail_langs = args.pr_avail_langs,
                  from_lang = args.from_lang,
-                 to_lang = args.to_lang)
+                 to_lang = args.to_lang,
+                 cli_launch = True)
+    
