@@ -36,6 +36,7 @@ class MSTranslatorClient(TranslatorClient):
         try:
             request = requests.get(url, params=params, headers=headers, timeout=5.0)
             response = request.json()
+            print(type(response['translation']))
             return response['translation']
         except:
             return None

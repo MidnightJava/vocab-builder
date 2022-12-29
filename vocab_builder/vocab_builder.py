@@ -55,10 +55,11 @@ class VocabBuilder():
                 self.run_test_vocab()
             
     def get_avail_langs(self):
-        resp = []
-        for k,v in self.langs.items():
-            resp.append(f"{k}\t{v['name']}")
-        return resp
+        # resp = []
+        # for k,v in self.langs.items():
+        #     resp.append(f"{k}\t{v['name']}")
+        # return resp
+        return self.client.get_languages()
     
     def run_test_vocab(self):        
         done = False
