@@ -55,10 +55,6 @@ class VocabBuilder():
                 self.run_test_vocab()
             
     def get_avail_langs(self):
-        # resp = []
-        # for k,v in self.langs.items():
-        #     resp.append(f"{k}\t{v['name']}")
-        # return resp
         return self.client.get_languages()
     
     def run_test_vocab(self):        
@@ -197,10 +193,17 @@ class VocabBuilder():
                         if len(ans): new_words.append((ans, w_1))
         self.merge_vocab(new_words)
         
-    def get_vocab(self):
-        with open(self.vocab_filename, 'r') as f:
-            contents = f.read()
-            return  json.loads(contents)
+    def get_vocab(self, l1=None, l2=None):
+        if l1 == None or l2 == None:
+            vocab_file = self.vocab_filename
+        else:
+            vocab_file = f"{DATA_DIR}{sep}{l2}_{l1}_vocab"
+        if exists(vocab_file):
+            with open(vocab_file, 'r') as f:
+                contents = f.read()
+                return  json.loads(contents)
+        else:
+            return {}
         
     def set_vocab(self, vocab):
         with open(self.vocab_filename, 'w') as f:
