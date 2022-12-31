@@ -36,7 +36,6 @@ class VocabBuilder():
         self.initialize_vocab()
         
         if self.cli_launch:
-        
             if self.pr_avail_langs:
                 print("Available languages for translation")
                 print("Code\tName")
@@ -49,8 +48,10 @@ class VocabBuilder():
                 print(f"{len(vocab)} {self.to_langname} TO {self.from_langname} words saved")
             elif self.import_vocab:
                 self.import_vocab_file(self.import_vocab)
+                self.export_vocab()
             elif self.add_vocab:
                 self.run_add_vocab(self.no_trans_check)
+                self.export_vocab()
             elif self.test_vocab:
                 self.run_test_vocab()
             
@@ -74,13 +75,16 @@ class VocabBuilder():
             if len(ans):
                 done = True
                 break
-            trans = self.client.translate(lang2['id'], lang1['id'], word)
+            trans = self.get_saved_translation(word)
             print(f"\n{lang1['name']} Translation: {trans}\n")
             print("Press Enter if you knew the translation, any other key if you did not ")
             c = readchar.readkey()
             if c == '\n':
                 self.mark_correct(word if self.word_order == 'to-from' else trans)
-                self.selected_words.remove(word if self.word_order == 'to-from' else trans)
+                try:
+                    self.selected_words.remove(word)
+                except:
+                    pass
     
     def import_vocab_file(self, filename):
         #Assumes the first column is the TO language and the second column is the FROM language
@@ -92,10 +96,11 @@ class VocabBuilder():
             print(f"{len(file.readlines())} words to import")
             file.seek(0)
             for row in csvFile:
+                if len(row) == 1: row.append("")
                 if row[0] and not row[1]:
                     if not self.no_word_lookup:
                         row[1] = self.client.translate(self.to_lang, self.from_lang, row[0])
-                    if not row[1]:
+                    if row[1] == row[0]:
                         missed_translation = True
                         untranslated_words.add(row[0])
                     else:
@@ -103,26 +108,44 @@ class VocabBuilder():
                 elif row[1] and not row[0]:
                     if not self.no_word_lookup:
                         row[0] = self.client.translate(self.from_lang, self.to_lang, row[1])
-                    if not row[0]:
+                    if row[0] == row[1]:
                         missed_translation = True
                         untranslated_words.add(row[1])
                     else:
                         translated_words.append((row[0], row[1]))
                 else:
                     translated_words.append((row[0], row[1]))
+                    if len(row) > 2:
+                        for i in range(2, len(row)):
+                            translated_words.append((row[0], row[i]))
             if missed_translation:
-                print("The following words were not imported because a translation could not be determined and was not explicitly provided")
+                print("The following words were not imported because a translation could not be determined and was not explicitly provided. " +
+                      "This error will also occur if the translation is identical to the original word.")
                 for w in untranslated_words: print(w)
             
             vocab = self.get_vocab()
+            duplicate_words = set()
+            duplicate_translation = False
             for w1, w2 in translated_words:
-                vocab[w1] = {
-                    "text": w2,
-                    "lastCorrect": "",
-                    "count": 0
-                }
+                [w1, w2] = [w1.strip(), w2.strip()]
+                if not w1 in vocab:
+                    vocab[w1] = {
+                        "translations": [w2],
+                        "lastCorrect": "",
+                        "count": 0
+                    }
+                else:
+                    val = vocab[w1]
+                    if w2 in val["translations"]:
+                        duplicate_translation = True
+                        duplicate_words.add(w2)
+                    else:
+                        val["translations"].append(w2)
+            if duplicate_translation:
+                print("The following words were not imported because a translation entry already exists")
+                for w in duplicate_words: print(w)
             self.set_vocab(vocab)
-            print(f"{len(translated_words)} words imnported")
+            print(f"{len(translated_words) - len(duplicate_words)} words imnported")
                 
                 
     
@@ -141,7 +164,9 @@ class VocabBuilder():
         
         vocab = dict(filter(select, self.get_vocab().items()))
         if self.word_order == "from-to":
-                return list(map( lambda v: v['text'], filter(lambda k: k != "meta", vocab.values())))
+                vals = list(map( lambda v: v['translations'], filter(lambda k: k != "meta", vocab.values())))
+                #Now flatten it
+                return [item for sublist in vals for item in sublist]
         else:
             return list(filter(lambda k: k != "meta", vocab.keys()))
     
@@ -205,6 +230,20 @@ class VocabBuilder():
         else:
             return {}
         
+    def get_saved_translation(self, word):
+        vocab = self.get_vocab()
+        if self.word_order == "to-from":
+            return ",".join(vocab[word]["translations"])
+        else:
+            trans = ""
+            for k, v in vocab.items():
+                if k == "meta": continue
+                for w in v["translations"]:
+                    if w == word:
+                        trans = k
+                        break
+            return trans 
+        
     def set_vocab(self, vocab):
         with open(self.vocab_filename, 'w') as f:
             f.write(json.dumps(vocab))
@@ -212,7 +251,12 @@ class VocabBuilder():
     def merge_vocab(self, new_words):
         vocab = self.get_vocab()
         for w_from, w_to in new_words:
-           vocab[w_to] = {"text": w_from, "lastCorrect": "", "count": 0}
+            if not w_to in vocab:
+                vocab[w_to] = {"translations": [w_from], "lastCorrect": "", "count": 0}
+            else:
+                trans = vocab[w_to]["translations"]
+                if not w_from in trans:
+                    trans.append(w_from)
         self.set_vocab(vocab)
     
     def initialize_vocab(self):
@@ -224,6 +268,17 @@ class VocabBuilder():
                     "key_lang": f"{self.to_lang}",
                     "key_langname": f"{self.to_langname}"
                 }}))
+                
+    def export_vocab(self):
+        vocab = self.get_vocab()
+        with open(f"{DATA_DIR}{sep}{self.to_lang}_{self.from_lang}_exported_words", "w") as file:
+            csvwriter = csv.writer(file,  quoting=csv.QUOTE_NONE)
+            for k,v in vocab.items():
+                if k == "meta": continue
+                row = [k]
+                for w in v["translations"]:
+                    row.append(w)
+                csvwriter.writerow(row)
                 
     def check_langs(self):
         found_from = found_to = False
@@ -291,10 +346,6 @@ if __name__ == "__main__":
                  pr_word_cnt = args.pr_word_cnt,
                  pr_avail_langs = args.pr_avail_langs,
                  from_lang = args.from_lang,
-<<<<<<< HEAD
                  to_lang = args.to_lang,
                  cli_launch = True)
     
-=======
-                 to_lang = args.to_lang)
->>>>>>> 72d7c98 (Remove subscription status api call)
