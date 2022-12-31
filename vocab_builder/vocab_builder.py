@@ -291,6 +291,10 @@ if __name__ == "__main__":
                  pr_word_cnt = args.pr_word_cnt,
                  pr_avail_langs = args.pr_avail_langs,
                  from_lang = args.from_lang,
+<<<<<<< HEAD
                  to_lang = args.to_lang,
                  cli_launch = True)
     
+=======
+                 to_lang = args.to_lang)
+>>>>>>> 72d7c98 (Remove subscription status api call)

@@ -13,7 +13,3 @@ class TranslatorClient():
     def translate(self, text):
         print("Unsupported operation: translate")
         return None
-    
-    def get_subscription_status(self):
-        print("Unsupported funciton: get_subscription_status")
-        return None
