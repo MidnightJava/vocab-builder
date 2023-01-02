@@ -27,7 +27,9 @@ class VocabBuilder():
         if not self.no_word_lookup: 
             langs = self.client.get_languages()
             self.langs = langs if langs else {}
-            self.check_langs()
+            err_msg = self.check_langs()
+            if err_msg:
+                raise Exception(err_msg)
         else:
             self.langs = {}
             self.to_langname = self.to_lang
@@ -56,7 +58,11 @@ class VocabBuilder():
                 self.run_test_vocab()
             
     def get_avail_langs(self):
-        return self.client.get_languages()
+        if not getattr(self, "available_langs", None):
+            print("GETTING LANGS")
+            self.available_langs = self.client.get_languages()
+        print(self.available_langs)
+        return self.available_langs
     
     def run_test_vocab(self):        
         done = False
@@ -292,9 +298,10 @@ class VocabBuilder():
             if found_from and found_to: break
         if not found_from or not found_to:
             missing = (self.from_lang if not found_from else "") + (f" {self.to_lang}" if not found_to else "")
-            print(f"One or both anguages specified are not available: {missing}")
-            sys.exit(0)
-
+            return f"One or both anguages specified are not available: {missing}"
+        else:
+            return None
+            
 if __name__ == "__main__":
     parser = ArgumentParser(prog="Vocab Builder", add_help=False,
                             description="A vocabulary practice tool for learning a foreign language",
