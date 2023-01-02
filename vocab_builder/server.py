@@ -1,6 +1,6 @@
 #!/bin/env python3
 
-from flask import Flask, json, jsonify, request, after_this_request, abort
+from flask import Flask, json, jsonify, request, after_this_request
 from vocab_builder import VocabBuilder
 
 api = Flask(__name__)
@@ -20,7 +20,8 @@ class BadRequestException(Exception):
         self.code = 400
         self.msg = msg
 
-@api.errorhandler(Exception)
+@api.errorhandler(NotInitializedException)
+@api.errorhandler(BadRequestException)
 def error_handler(err):
     print(err.msg)
     return err.msg, err.code
@@ -50,7 +51,7 @@ def init():
     except Exception as exc:
         raise BadRequestException(exc.args[0])
     
-    return "Initialized"
+    return jsonify({"Result": "Initialized"})
 
 def parse_request_params(req):
     if not "from_lang" in request.args:
@@ -86,8 +87,7 @@ def get_vocab():
     
     if app is None:
         raise NotInitializedException
-    l1, l2 = request.args["from_lang"], request.args["to_lang"]
-    vocab = app.get_vocab(l1, l2)
+    vocab = app.get_vocab()
     return jsonify(vocab)
     
     

@@ -298,7 +298,7 @@ class VocabBuilder():
             if found_from and found_to: break
         if not found_from or not found_to:
             missing = (self.from_lang if not found_from else "") + (f" {self.to_lang}" if not found_to else "")
-            return f"One or both anguages specified are not available: {missing}"
+            return f"The following language(s) were specified but are not available: {missing}"
         else:
             return None
             
