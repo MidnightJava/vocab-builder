@@ -208,7 +208,13 @@ class VocabBuilder():
                     else:
                         new_words.append((w_2, w_1))
                 else:
-                    w_2 = self.client.translate(lang1["id"], lang2["id"], w_1).lower()
+                    w_2 = self.client.translate(lang1["id"], lang2["id"], w_1)
+                    if w_2:
+                        w_2 = w_2.lower()
+                    else:
+                        print("The translation lookup failed. Check you Internet connection and your service subscription status. " +
+                              "Use option --no-word-lookup (-nl) to skip the online lookup and specify translations manuially.")
+                        sys.exit(0)
                     if w_2 and w_2 != w_1:
                         if not no_trans_check:
                             ans = input(f"translation: {w_2}   Enter to accept, or type a custom translation: ")
