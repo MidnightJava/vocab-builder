@@ -30,7 +30,7 @@ def error_handler(err):
 def init():
     global app
     try:
-        lang1, lang2 = parse_request_params(request)
+        lang1, lang2 = parse_request_params(request, 'from_lang', 'to_lang')
     except BadRequestException as exc:
         raise exc
     
@@ -53,15 +53,15 @@ def init():
     
     return jsonify({"Result": "Initialized"})
 
-def parse_request_params(req):
-    if not "from_lang" in request.args:
-        raise BadRequestException(msg = "Missing from_lang parameter")
-    elif not "to_lang" in request.args:
-        raise BadRequestException(msg = "Missing to_lang parameter")
+def parse_request_params(req, p1=None, p2=None):
+    if p1 and not p1 in request.args:
+        raise BadRequestException(msg = f"Missing {p1} parameter")
+    elif p2 and not p2 in request.args:
+        raise BadRequestException(msg = f"Missing {p2} parameter")
     
-    return request.args["from_lang"], request.args["to_lang"]
+    return request.args[p1], request.args[p2]
     
-@api.route('/languages', methods=['GET'])
+@api.route('/languages/get', methods=['GET'])
 def get_languages():
     global app
     
@@ -76,7 +76,7 @@ def get_languages():
         langs = app.get_avail_langs()
         return jsonify(langs)
     
-@api.route('/vocab', methods=['GET'])
+@api.route('/vocab/get_all', methods=['GET'])
 def get_vocab():
     global app
     
@@ -89,6 +89,37 @@ def get_vocab():
         raise NotInitializedException
     vocab = app.get_vocab()
     return jsonify(vocab)
+
+@api.route('/vocab/delete_entry', methods=['GET', 'OPTIONS'])
+def delete_vocab_entry_get():
+    @after_this_request
+    def add_header(resp):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        return resp
+    return "OK", 200
+    
+@api.route('/vocab/delete_entry', methods=['POST'])
+def delete_vocab_entry():
+    global app
+    try:
+        word_entry = request.get_json(force=True)
+    except BadRequestException as exc:
+        raise exc
+    
+    @after_this_request
+    def add_header(resp):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp
+    
+    if app is None:
+        raise NotInitializedException
+    
+    # word_entry = json.loads(json_str)
+    print(word_entry)
+    vocab = app.get_vocab()
+    
+    return "OK"
     
     
 if __name__ == "__main__":
