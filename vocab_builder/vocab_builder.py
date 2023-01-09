@@ -64,6 +64,23 @@ class VocabBuilder():
         print(self.available_langs)
         return self.available_langs
     
+    def translate(self, text, from_lang, to_lang):
+        from_lang = self.to_id(from_lang)
+        to_lang = self.to_id(to_lang)
+        if to_lang:
+            return self.client.translate(from_lang, to_lang, text)
+        else:
+            return text
+    
+    def to_id(self, lang):
+        if lang in self.langs:
+            return lang
+        for k,v in self.langs.items():
+            if lang == v['name'] or lang == v['nativeName']:
+                return k
+        print(f"Invlaid language: {lang}")
+        return None
+    
     def run_test_vocab(self):        
         done = False
         lang1 = {"id": self.from_lang, "name": self.from_langname}

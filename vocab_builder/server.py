@@ -53,13 +53,12 @@ def init():
     
     return jsonify({"Result": "Initialized"})
 
-def parse_request_params(req, p1=None, p2=None):
-    if p1 and not p1 in request.args:
-        raise BadRequestException(msg = f"Missing {p1} parameter")
-    elif p2 and not p2 in request.args:
-        raise BadRequestException(msg = f"Missing {p2} parameter")
+def parse_request_params(request, *params):
+    for param in params:
+        if param not in request.args:
+            raise BadRequestException(msg = f"Missing {param} parameter")
     
-    return request.args[p1], request.args[p2]
+    return [request.args[param] for param in params]
     
 @api.route('/languages/get', methods=['GET'])
 def get_languages():
@@ -90,22 +89,9 @@ def get_vocab():
     vocab = app.get_vocab()
     return jsonify(vocab)
 
-@api.route('/vocab/delete_entry', methods=['GET', 'OPTIONS'])
-def delete_vocab_entry_get():
-    @after_this_request
-    def add_header(resp):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
-        return resp
-    return "OK", 200
-    
-@api.route('/vocab/delete_entry', methods=['POST'])
-def delete_vocab_entry():
+@api.route('/vocab/translate', methods=['GET'])
+def translate():
     global app
-    try:
-        word_entry = request.get_json(force=True)
-    except BadRequestException as exc:
-        raise exc
     
     @after_this_request
     def add_header(resp):
@@ -115,11 +101,39 @@ def delete_vocab_entry():
     if app is None:
         raise NotInitializedException
     
+    try:
+        word, from_lang, to_lang = parse_request_params(request, 'word', 'from_lang', 'to_lang')
+    except BadRequestException as exc:
+        raise exc
+    
+    res = app.translate(word, from_lang, to_lang)
+    return jsonify({"result": res}), 200
+    
+@api.route('/vocab/delete_entry', methods=['POST', 'OPTIONS', 'GET'])
+def delete_vocab_entry():
+    @after_this_request
+    def add_header(resp):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        return resp
+    
+    if request.method == "OPTIONS" or request.method == 'GET':
+        return "OK", 200
+    global app
+    try:
+        word_entry = request.get_json(force=True)
+    except BadRequestException as exc:
+        raise exc
+    
+    
+    if app is None:
+        raise NotInitializedException
+    
     # word_entry = json.loads(json_str)
     print(word_entry)
     vocab = app.get_vocab()
     
-    return "OK"
+    return jsonify({}),200
     
     
 if __name__ == "__main__":
