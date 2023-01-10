@@ -247,6 +247,12 @@ class VocabBuilder():
                         if len(ans): new_words.append((ans, w_1))
         self.merge_vocab(new_words)
         
+    def delete_entry(self, key):
+        vocab = self.get_vocab()
+        if key in vocab:
+            del vocab[key]
+            self.set_vocab(vocab)
+        
     def get_vocab(self, l1=None, l2=None):
         if l1 == None or l2 == None:
             vocab_file = self.vocab_filename

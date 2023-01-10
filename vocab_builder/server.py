@@ -121,7 +121,7 @@ def delete_vocab_entry():
         return "OK", 200
     global app
     try:
-        word_entry = request.get_json(force=True)
+        entry = request.get_json(force=True)
     except BadRequestException as exc:
         raise exc
     
@@ -130,10 +130,12 @@ def delete_vocab_entry():
         raise NotInitializedException
     
     # word_entry = json.loads(json_str)
-    print(word_entry)
-    vocab = app.get_vocab()
-    
-    return jsonify({}),200
+    print(entry)
+    try:
+        app.delete_entry(entry['key'])
+    except Exception as e:
+        return jsonify({"error": str(e)}),400
+    return jsonify({"deleted": entry['key']}), 200
 
 @api.route('/vocab/add_entry', methods=['POST', 'OPTIONS', 'GET'])
 def add_vocab_entry():
