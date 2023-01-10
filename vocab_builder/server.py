@@ -134,6 +134,32 @@ def delete_vocab_entry():
     vocab = app.get_vocab()
     
     return jsonify({}),200
+
+@api.route('/vocab/add_entry', methods=['POST', 'OPTIONS', 'GET'])
+def add_vocab_entry():
+    @after_this_request
+    def add_header(resp):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        return resp
+    
+    if request.method == "OPTIONS" or request.method == 'GET':
+        return "OK", 200
+    
+    global app
+    try:
+        word_entry = request.get_json(force=True)
+    except BadRequestException as exc:
+        raise exc
+    
+    
+    if app is None:
+        raise NotInitializedException
+    
+    # word_entry = json.loads(json_str)
+    app.merge_vocab([(word_entry['from'], word_entry['to'])])
+    
+    return jsonify({}),200
     
     
 if __name__ == "__main__":
