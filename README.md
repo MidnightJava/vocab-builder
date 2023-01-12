@@ -6,7 +6,7 @@ The purpose of the app is to support the learning of a new language by providing
 
 The user loads the vocabulary information into the app by either importing a csv file, enering words/phrases on a command line, or adding words/phrases to a table in the User Interface (UI). The user can specify the translation (or answer) for each entry, or the app can lookup translations online via the Microsoft Azure-hosted language translation API. The user must supply an API key for the online lookup to work. The service is free with a usage limit of 500,000 characters per month.
 
-To install the back-end python application:
+## To install the back-end python application:
 
 1. Create a python virtual environment
 sudo yum install virtualenv | sudo apt-get install virtualenv
@@ -19,7 +19,7 @@ virtalenv .ven -p python3
 3. Install dependencies:
 pip install -r requirements.txt
 
-4. To run the python command-line app:
+## To run the python command-line app:
 
 vocab_builder/vocab_builder.py -h
 
