@@ -9,18 +9,28 @@ The user loads the vocabulary information into the app by either importing a csv
 ## To install the back-end python application:
 
 1. Create a python virtual environment
+```
 sudo yum install virtualenv | sudo apt-get install virtualenv
 cd <project location>
-virtalenv .ven -p python3
+virtualenv .venv -p python3
+```
 
 2. Activate the virtual environment
+```
 .venv/bin/activate
+```
 
 3. Install dependencies:
+```
 pip install -r requirements.txt
+```
+4. Obtain an API key from and specify it in the file ~/.env (create it if it doesn't exist) as follows:
+```export API_KEY="<YOUR_API_KEY>"```
+
+5. Create a free subscription to the Microsoft Translation Service at https://learn.microsoft.com/en-us/rest/api/cognitiveservices/translator/translator. You can skip this if you want to provide word translations manually instead of relying on an external service. In that case, launch the program with the -nl option.
 
 ## To run the python command-line app:
-
+```
 vocab_builder/vocab_builder.py -h
 
 usage: Vocab Builder [-av | -tv | -pwc | -pal | -iv IMPORT_VOCAB | -h] [-nl]
@@ -80,6 +90,7 @@ Other Options:
   
   4. To run the server version of the app
   vocab_builder/server.py
+```
 
 Launch the https://github.com/MidnightJava/vocab-builder-ui web application (see ther readme there), and it will connect to the server automatically. You can also test the REST API in the server by looking at server.py and using a web browser or a command-line tool like curl to form an appropriate HTTP request message, using either the GET or POST methods.
 
