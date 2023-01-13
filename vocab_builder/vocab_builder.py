@@ -112,7 +112,7 @@ class VocabBuilder():
     def import_vocab_file(self, filename):
         #Assumes the first column is the TO language and the second column is the FROM language
         with open(filename, mode='r') as file:
-            csvFile = csv.reader(file)
+            csvFile = csv.reader(file, quotechar='|',  quoting=csv.QUOTE_NONE)
             missed_translation = False
             untranslated_words = set()
             translated_words = []
@@ -307,13 +307,16 @@ class VocabBuilder():
     def export_vocab(self):
         vocab = self.get_vocab()
         with open(f"{DATA_DIR}{sep}{self.to_lang}_{self.from_lang}_exported_words", "w") as file:
-            csvwriter = csv.writer(file,  quoting=csv.QUOTE_NONE)
+            csvwriter = csv.writer(file,  quotechar='|',  quoting=csv.QUOTE_NONE)
             for k,v in vocab.items():
                 if k == "meta": continue
                 row = [k]
                 for w in v["translations"]:
                     row.append(w)
-                csvwriter.writerow(row)
+                try:
+                    csvwriter.writerow(row)
+                except:
+                    print(f"Bad row: {row}")
                 
     def check_langs(self):
         found_from = found_to = False
