@@ -32,7 +32,7 @@ def init():
     try:
         lang1, lang2 = parse_request_params(request, 'from_lang', 'to_lang')
     except BadRequestException as exc:
-        raise exc
+        lang1, lang2 = "", ""
     
     @after_this_request
     def add_header(resp):
@@ -69,11 +69,8 @@ def get_languages():
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp
     
-    if app is None:
-        raise NotInitializedException
-    else:
-        langs = app.get_avail_langs()
-        return jsonify(langs)
+    langs = app.get_avail_langs()
+    return jsonify(langs)
     
 @api.route('/vocab/get_all', methods=['GET'])
 def get_vocab():

@@ -27,9 +27,7 @@ class VocabBuilder():
         if not self.no_word_lookup: 
             langs = self.client.get_languages()
             self.langs = langs if langs else {}
-            err_msg = self.check_langs()
-            if err_msg:
-                raise Exception(err_msg)
+            self.check_langs()
         else:
             self.langs = {}
             self.to_langname = self.to_lang
@@ -60,7 +58,7 @@ class VocabBuilder():
     def get_avail_langs(self):
         if not getattr(self, "available_langs", None):
             print("GETTING LANGS")
-            self.available_langs = self.client.get_languages()
+            self.available_langs = MSTranslatorClient().get_languages()
         print(self.available_langs)
         return self.available_langs
     
