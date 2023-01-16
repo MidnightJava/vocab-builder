@@ -259,7 +259,12 @@ class VocabBuilder():
         if exists(vocab_file):
             with open(vocab_file, 'r') as f:
                 contents = f.read()
-                return  json.loads(contents)
+                try:
+                    contents = json.loads(contents).items()
+                    filtered = dict(filter(lambda el: el[0] != "meta", contents))
+                except:
+                    filtered = {}
+                return  filtered
         else:
             return {}
         
@@ -296,11 +301,20 @@ class VocabBuilder():
         if not exists(self.vocab_filename):
             with open(self.vocab_filename, 'a') as f:
                 f.write(json.dumps({"meta": {
-                    "val_lang": f"{self.from_lang}",
-                    "val_langname": f"{self.from_langname}",
-                    "key_lang": f"{self.to_lang}",
-                    "key_langname": f"{self.to_langname}"
+                    "val_langid": f"{self.to_lang}",
+                    "val_langname": f"{self.to_langname}",
+                    "key_langid": f"{self.from_lang}",
+                    "key_langname": f"{self.from_langname}"
                 }}))
+                
+    def set_default_langs(self, frm, to):
+         with open(f"{DATA_DIR}{sep}default.langs", 'w') as f:
+            f.write(json.dumps({"from": frm, "to": to}))
+            
+    def get_default_langs(self):
+        with open(f"{DATA_DIR}{sep}default.langs", 'r') as f:
+            default_langs = json.loads(f.read())
+            return default_langs
                 
     def export_vocab(self):
         vocab = self.get_vocab()

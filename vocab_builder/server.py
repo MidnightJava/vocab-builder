@@ -1,5 +1,8 @@
 #!/bin/env python3
 
+# TODO
+# Add button to save default langs
+# Filter meta entry from vocab list
 from flask import Flask, json, jsonify, request, after_this_request
 from vocab_builder import VocabBuilder
 
@@ -75,7 +78,6 @@ def get_languages():
 @api.route('/vocab/get_all', methods=['GET'])
 def get_vocab():
     global app
-    
     @after_this_request
     def add_header(resp):
         resp.headers["Access-Control-Allow-Origin"] = "*"
@@ -84,7 +86,20 @@ def get_vocab():
     if app is None:
         raise NotInitializedException
     vocab = app.get_vocab()
-    return jsonify(vocab)
+    return jsonify(vocab), 200
+
+@api.route('/languages/get_defaults', methods=['GET'])
+def get_default_langs():
+    global app
+    @after_this_request
+    def add_header(resp):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp
+    
+    if app is None:
+        raise NotInitializedException
+    default_langs = app.get_default_langs()
+    return jsonify(default_langs), 200
 
 @api.route('/vocab/translate', methods=['GET'])
 def translate():
@@ -157,6 +172,32 @@ def add_vocab_entry():
     
     # word_entry = json.loads(json_str)
     app.merge_vocab([(word_entry['from'], word_entry['to'])])
+    
+    return jsonify({}),200
+    
+@api.route('/languages/set_defaults', methods=['POST', 'OPTIONS', 'GET'])
+def set_default_langs():
+    @after_this_request
+    def add_header(resp):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        return resp
+    
+    if request.method == "OPTIONS" or request.method == 'GET':
+        return "OK", 200
+    
+    global app
+    try:
+        default_langs = request.get_json(force=True)
+    except BadRequestException as exc:
+        raise exc
+    
+    
+    if app is None:
+        raise NotInitializedException
+    
+    # word_entry = json.loads(json_str)
+    app.set_default_langs(frm=default_langs["from"], to=default_langs["to"])
     
     return jsonify({}),200
     
