@@ -171,7 +171,7 @@ def add_vocab_entry():
         raise NotInitializedException
     
     # word_entry = json.loads(json_str)
-    app.merge_vocab([(word_entry['from'], word_entry['to'])])
+    app.merge_vocab([(word_entry['from'], word_entry['to'])], force=True)
     
     return jsonify({}),200
     

@@ -286,15 +286,22 @@ class VocabBuilder():
         with open(self.vocab_filename, 'w') as f:
             f.write(json.dumps(vocab))
             
-    def merge_vocab(self, new_words):
+    def merge_vocab(self, new_words, force=False):
         vocab = self.get_vocab()
         for w_from, w_to in new_words:
-            if not w_to in vocab:
-                vocab[w_to] = {"translations": [w_from], "lastCorrect": "", "count": 0}
+            if isinstance(w_from, str):
+                w_from_l = w_from.split(',')
             else:
-                trans = vocab[w_to]["translations"]
-                if not w_from in trans:
-                    trans.append(w_from)
+                w_from_l = w_from
+            if not w_to in vocab:
+                vocab[w_to] = {"translations": w_from_l, "lastCorrect": "", "count": 0}
+            else:
+                if force:
+                    vocab[w_to]['translations'] = w_from_l
+                else:
+                    trans = vocab[w_to]["translations"]
+                    if not w_from in trans:
+                        trans.append(w_from)
         self.set_vocab(vocab)
     
     def initialize_vocab(self):
