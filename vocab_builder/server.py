@@ -133,7 +133,7 @@ def select_words():
     if app is None:
         raise NotInitializedException
     
-    app.selected_words = app.select_words()
+    app.select_words()
     return jsonify({"Result": "Success"}), 200
 
 @api.route('/vocab/next_word', methods=['GET'])
@@ -229,6 +229,32 @@ def set_default_langs():
     
     # word_entry = json.loads(json_str)
     app.set_default_langs(frm=default_langs["from"], to=default_langs["to"])
+    
+    return jsonify({}),200
+
+@api.route('/vocab/set_word_order', methods=['POST', 'OPTIONS', 'GET'])
+def set_word_order():
+    @after_this_request
+    def add_header(resp):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        return resp
+    
+    if request.method == "OPTIONS" or request.method == 'GET':
+        return "OK", 200
+    
+    global app
+    try:
+        word_order = request.get_json(force=True)
+    except BadRequestException as exc:
+        raise exc
+    
+    
+    if app is None:
+        raise NotInitializedException
+    
+    app.word_order = word_order['value']
+    app.select_words()
     
     return jsonify({}),200
     

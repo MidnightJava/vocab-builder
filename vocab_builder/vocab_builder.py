@@ -187,7 +187,7 @@ class VocabBuilder():
         if self.word_order == "from-to":
                 vals = list(map( lambda v: v['translations'], filter(lambda k: k != "meta", vocab.values())))
                 #Now flatten it
-                return [item for sublist in vals for item in sublist]
+                self.selected_words = [item for sublist in vals for item in sublist]
         else:
             self.selected_words = list(filter(lambda k: k != "meta", vocab.keys()))
     
