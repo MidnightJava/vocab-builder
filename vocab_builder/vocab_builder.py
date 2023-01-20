@@ -85,7 +85,7 @@ class VocabBuilder():
         lang2 = {"id": self.to_lang, "name": self.to_langname}
         if self.word_order == "from-to":
             [lang1, lang2] = [lang2, lang1]
-        self.selected_words = self.select_words()
+        self.select_words()
         while not done:
             word = self.next_word()
             if word is None:
@@ -189,7 +189,7 @@ class VocabBuilder():
                 #Now flatten it
                 return [item for sublist in vals for item in sublist]
         else:
-            return list(filter(lambda k: k != "meta", vocab.keys()))
+            self.selected_words = list(filter(lambda k: k != "meta", vocab.keys()))
     
     def next_word(self):
         if not len(self.selected_words):

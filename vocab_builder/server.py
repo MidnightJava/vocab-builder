@@ -120,6 +120,37 @@ def translate():
     
     res = app.translate(word, from_lang, to_lang)
     return jsonify({"result": res}), 200
+
+@api.route('/vocab/select_words', methods=['GET'])
+def select_words():
+    global app
+    
+    @after_this_request
+    def add_header(resp):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp
+    
+    if app is None:
+        raise NotInitializedException
+    
+    app.selected_words = app.select_words()
+    return jsonify({"Result": "Success"}), 200
+
+@api.route('/vocab/next_word', methods=['GET'])
+def next_word():
+    global app
+    
+    @after_this_request
+    def add_header(resp):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp
+    
+    if app is None:
+        raise NotInitializedException
+
+    
+    res = app.next_word()
+    return jsonify({"result": "null" if res is None else res}), 200
     
 @api.route('/vocab/delete_entry', methods=['POST', 'OPTIONS', 'GET'])
 def delete_vocab_entry():
