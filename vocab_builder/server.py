@@ -174,11 +174,16 @@ def delete_vocab_entry():
     
     # word_entry = json.loads(json_str)
     print(entry)
+    deleted = []
     try:
-        app.delete_entry(entry['key'])
+        if not isinstance(entry, list):
+            entry = [entry]
+        for item in entry:
+            app.delete_entry(item['key'])
+            deleted.append(item['key'])
     except Exception as e:
         return jsonify({"error": str(e)}),400
-    return jsonify({"deleted": entry['key']}), 200
+    return jsonify({"deleted": deleted}), 200
 
 @api.route('/vocab/add_entry', methods=['POST', 'OPTIONS', 'GET'])
 def add_vocab_entry():
