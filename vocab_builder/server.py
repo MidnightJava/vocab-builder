@@ -150,7 +150,7 @@ def next_word():
 
     
     res = app.next_word()
-    return jsonify({"result": "null" if res is None else res}), 200
+    return jsonify(res), 200
     
 @api.route('/vocab/delete_entry', methods=['POST', 'OPTIONS', 'GET'])
 def delete_vocab_entry():

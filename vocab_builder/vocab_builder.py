@@ -87,7 +87,7 @@ class VocabBuilder():
             [lang1, lang2] = [lang2, lang1]
         self.select_words()
         while not done:
-            word = self.next_word()
+            word = self.next_word()['text']
             if word is None:
                 print("No more words to review for this round")
                 done = True
@@ -190,12 +190,14 @@ class VocabBuilder():
                 self.selected_words = [item for sublist in vals for item in sublist]
         else:
             self.selected_words = list(filter(lambda k: k != "meta", vocab.keys()))
+        self.selected_count = 0
     
     def next_word(self):
         if not len(self.selected_words):
             return None
         idx = randint(0, len(self.selected_words) - 1)
-        return self.selected_words[idx]
+        self.selected_count+= 1
+        return {"text": self.selected_words[idx], "count": self.selected_count, "size": len(self.selected_words)}
     
     def mark_correct(self, word):
         vocab = self.get_vocab()
