@@ -210,6 +210,33 @@ def add_vocab_entry():
     app.merge_vocab([(word_entry['from'], word_entry['to'])], force=True)
     
     return jsonify({}),200
+
+@api.route('/vocab/mark_correct', methods=['POST', 'OPTIONS', 'GET'])
+def vocab_mark_correct():
+    @after_this_request
+    def add_header(resp):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        return resp
+    
+    if request.method == "OPTIONS" or request.method == 'GET':
+        return "OK", 200
+    
+    global app
+    try:
+        entry = request.get_json(force=True)
+    except BadRequestException as exc:
+        raise exc
+    
+    
+    if app is None:
+        raise NotInitializedException
+    
+    app.mark_correct(entry['text'])
+    print(f"{entry['text']} is correct")
+    return jsonify({}),200
+    #TODO remove word from selection in app.mark_correct (and no longer in app.run_test_vocab) But look
+    #at word-order when removing, to know which language the removed word is given in
     
 @api.route('/languages/set_defaults', methods=['POST', 'OPTIONS', 'GET'])
 def set_default_langs():

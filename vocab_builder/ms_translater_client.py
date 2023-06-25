@@ -75,5 +75,4 @@ class MSTranslatorClient(TranslatorClient):
 """
 resp.text when not subscribed
 {"message":"You are not subscribed to this API."}
-{"message":"You are not subscribed to this API."}
 """

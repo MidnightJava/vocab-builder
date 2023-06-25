@@ -2,11 +2,11 @@
 
 This is the back-end component (implemented in python) of the Vocabulary Builder app. The front-end component is https://github.com/MidnightJava/vocab-builder-ui. Eventually the front-end and back-end will be combined into a single AppImage installable product using Tauri (https://tauri.app/)
 
-The purpose of the app is to support the learning of a new language by providing an adaptive vocabulary test capability. The app does not teach you a  new language. Rather in works in concert with a language-learning app, such as DuoLingo or Babble. It can support any language, even one you just make up, and it can work with words and/or phrases. Thus you can use it to memorize answers to questions in a specific domain.
+The purpose of the app is to support the learning of a new language by providing an adaptive vocabulary test capability. The app does not teach you a  new language. Rather it works in concert with a language-learning app, such as DuoLingo or Babble. It can support any language, even one you just make up, and it can work with words and/or phrases. Thus you can use it to memorize answers to questions in a specific domain.
 
-The user loads the vocabulary information into the app by either importing a csv file, enering words/phrases on a command line, or adding words/phrases to a table in the User Interface (UI). The user can specify the translation (or answer) for each entry, or the app can lookup translations online via the Microsoft Azure-hosted language translation API. The user must supply an API key for the online lookup to work. The service is free with a usage limit of 500,000 characters per month.
+The user loads the vocabulary information into the app by either importing a csv file, enering words/phrases on a command line, or adding words/phrases to a table in the User Interface (UI). The user can specify the translation (or answer) for each entry, or the app can lookup translations online via the Microsoft Azure-hosted language translation API. The user must supply an API key for the online lookup to work. The Azure service is free with a usage limit of 500,000 characters per month.
 
-## To install the back-end python application:
+## To install the back-end python application (Linux):
 
 1. Create a python virtual environment
 ```
@@ -24,7 +24,7 @@ virtualenv .venv -p python3
 ```
 pip install -r requirements.txt
 ```
-4. Obtain an API key from and specify it in the file ~/.env (create it if it doesn't exist) as follows:
+4. Obtain an API key from MS Azure and specify it in the file ~/.env (create this file if it doesn't exist) as follows:
 ```export API_KEY="<YOUR_API_KEY>"```
 
 5. Create a free subscription to the Microsoft Translation Service at https://learn.microsoft.com/en-us/rest/api/cognitiveservices/translator/translator. You can skip this if you want to provide word translations manually instead of relying on an external service. In that case, launch the program with the -nl option.
@@ -85,12 +85,12 @@ Other Options:
                         --no-word-lookup option is selected (default: it)
   -wo to-from | from-to, --word-order to-from | from-to
                         Present words in the language you're learning
-                        (default) or the language you already know (default:
-                        to-from)
+                        (to-from) or the language you already know (from-to). default:
+                        to-from
   
-  4. To run the server version of the app
+  4. To run the server version of the app (to be used with the UI) instead of the command line client
   vocab_builder/server.py
 ```
 
-Launch the https://github.com/MidnightJava/vocab-builder-ui web application (see ther readme there), and it will connect to the server automatically. You can also test the REST API in the server by looking at server.py and using a web browser or a command-line tool like curl to form an appropriate HTTP request message, using either the GET or POST methods.
+Launch the https://github.com/MidnightJava/vocab-builder-ui web application (see the readme there), and it will connect to the server automatically. You can also test the REST API in the server by looking at server.py and using a web browser or a command-line tool like curl to form an appropriate HTTP request message, using either the GET or POST methods.
 

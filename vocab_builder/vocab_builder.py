@@ -38,10 +38,10 @@ class VocabBuilder():
         if self.cli_launch:
             if self.pr_avail_langs:
                 print("Available languages for translation")
-                print("Code\tName")
+                print("Code\t\tName")
                 # print(json.dumps(self.langs, sort_keys=True, indent=4, ensure_ascii=False, separators=(',', ': ')))
                 for lang in self.get_avail_langs():
-                    print(lang)
+                    print(f"{lang}\t\t{self.available_langs[lang]['name']}")
                 
             elif self.pr_word_cnt:
                 vocab = self.get_vocab()
@@ -57,9 +57,8 @@ class VocabBuilder():
             
     def get_avail_langs(self):
         if not getattr(self, "available_langs", None):
-            print("GETTING LANGS")
             self.available_langs = MSTranslatorClient().get_languages()
-        print(self.available_langs)
+        # print(self.available_langs)
         return self.available_langs
     
     def translate(self, text, from_lang, to_lang):
@@ -122,6 +121,7 @@ class VocabBuilder():
                     if not self.no_word_lookup:
                         row[1] = self.client.translate(self.to_lang, self.from_lang, row[0])
                     if row[1] == row[0]:
+                        #TODO handle case where word is identical in both languages
                         missed_translation = True
                         untranslated_words.add(row[0])
                     else:
@@ -130,6 +130,7 @@ class VocabBuilder():
                     if not self.no_word_lookup:
                         row[0] = self.client.translate(self.from_lang, self.to_lang, row[1])
                     if row[0] == row[1]:
+                        #TODO handle case where word is identical in both languages
                         missed_translation = True
                         untranslated_words.add(row[1])
                     else:
@@ -177,7 +178,7 @@ class VocabBuilder():
                 return False
             if v["count"] <= self.min_correct:
                 return True
-            if not len(v["min_age"]):
+            if not len(v["lastCorrect"]):
                 return True
             last_correct = date.fromisoformat(v['lastCorrect'])
             delta_days = (date.today() - last_correct).days
@@ -198,6 +199,7 @@ class VocabBuilder():
         idx = randint(0, len(self.selected_words) - 1)
         self.selected_count+= 1
         return {"text": self.selected_words[idx], "count": self.selected_count, "size": len(self.selected_words)}
+        #Word is removed from selected_words in run_test_vocab method, only if user knew the translation
     
     def mark_correct(self, word):
         vocab = self.get_vocab()
@@ -266,7 +268,7 @@ class VocabBuilder():
                     filtered = dict(filter(lambda el: el[0] != "meta", contents))
                 except:
                     filtered = {}
-                return  filtered
+                return filtered
         else:
             return {}
         
