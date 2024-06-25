@@ -27,7 +27,8 @@ pip install -r requirements.txt
 4. Obtain an API key from MS Azure and specify it in the file ~/.env (create this file if it doesn't exist) as follows:
 ```export API_KEY="<YOUR_API_KEY>"```
 
-5. Create a free subscription to the Microsoft Translation Service at https://learn.microsoft.com/en-us/rest/api/cognitiveservices/translator/translator. You can skip this if you want to provide word translations manually instead of relying on an external service. In that case, launch the program with the -nl option.
+5. Create a free subscription to the Microsoft Translation Service at https://learn.microsoft.com/en-us/rest/api/cognitiveservices/translator/translator. Create an API key and define it in your environment like this:
+"API_KEY=<YOUUR API KEY>"  You can skip this if you want to provide word translations manually instead of relying on an external service. In that case, launch the program with the -nl option.
 
 ## To run the python command-line app:
 ```
