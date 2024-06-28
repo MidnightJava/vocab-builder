@@ -203,10 +203,11 @@ class VocabBuilder():
     
     def mark_correct(self, word):
         vocab = self.get_vocab()
-        entry = vocab[word]
-        entry['count']+= 1
-        entry['lastCorrect'] = date.today().isoformat()
-        self.set_vocab(vocab)
+        entry = vocab.get(word, None)
+        if entry is not None:
+          entry['count']+= 1
+          entry['lastCorrect'] = date.today().isoformat()
+          self.set_vocab(vocab)
           
     def run_add_vocab(self, no_trans_check):
         done = False

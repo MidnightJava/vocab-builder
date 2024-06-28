@@ -27,7 +27,7 @@ class BadRequestException(Exception):
 @api.errorhandler(BadRequestException)
 def error_handler(err):
     print(err.msg)
-    return err.msg, err.code
+    return jsonify({"Error": err.msg}), 200
 
 @api.route('/init', methods=['GET'])
 def init():
