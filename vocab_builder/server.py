@@ -45,8 +45,8 @@ def init():
     try:
         app = VocabBuilder(no_trans_check = False,
                 no_word_lookup = False,
-                min_correct = 5,
-                min_age = 15,
+                min_correct = int(request.args['min_correct']) or 5,
+                min_age = int(request.args['min_age']) or 15,
                 word_order= "from-to",
                 from_lang = lang1,
                 to_lang = lang2,
