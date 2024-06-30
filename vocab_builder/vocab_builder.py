@@ -2,7 +2,7 @@
 
 from dotenv import load_dotenv
 import os
-load_dotenv(dotenv_path=f"{os.environ['HOME']}{os.path.sep}/.env")
+load_dotenv()
 
 import json
 from os.path import exists, sep
@@ -17,13 +17,23 @@ from ms_translater_client import MSTranslatorClient
 
 DATA_DIR = "data"
 
+API_KEY = os.getenv("API_KEY", None)
+if API_KEY is None:
+    print("*** You must specify an API key ***.\nOne way to do this is to create a file named .env in your home directory, " +
+          "and insert this line: export API_KEY=\"<your API key>\". Get an API key here:  https://portal.azure.com/#home. " +
+          "Then create a free subscription to the Microsoft Translation Service at " +
+          "https://learn.microsoft.com/en-us/rest/api/cognitiveservices/translator/translator. You can skip this " +
+          "if you want to provide word translations manually instead of relying on an external service. In that case, " +
+          "launch the program with the -nl option.")
+    sys.exit(0)
+
 class VocabBuilder():
 
     def __init__(self, **kwargs):
         for k,v in kwargs.items():
             setattr(self, k, v)
         self.vocab_filename = f"{DATA_DIR}{sep}{self.to_lang}_{self.from_lang}_vocab"
-        self.client = MSTranslatorClient()
+        self.client = MSTranslatorClient(API_KEY)
         if not self.no_word_lookup: 
             langs = self.client.get_languages()
             self.langs = langs if langs else {}
@@ -54,10 +64,16 @@ class VocabBuilder():
                 self.export_vocab()
             elif self.test_vocab:
                 self.run_test_vocab()
-            
+    
+    def get_api_key(self):
+      return self.client.get_api_key()
+    
+    def set_api_key(self, api_key):
+      return self.client.set_api_key(api_key)
+        
     def get_avail_langs(self):
         if not getattr(self, "available_langs", None):
-            self.available_langs = MSTranslatorClient().get_languages()
+            self.available_langs = self.client.get_languages()
         # print(self.available_langs)
         return self.available_langs
     

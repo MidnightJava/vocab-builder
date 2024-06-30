@@ -5,6 +5,7 @@
 # Filter meta entry from vocab list
 from flask import Flask, json, jsonify, request, after_this_request
 from vocab_builder import VocabBuilder
+import os
 
 api = Flask(__name__)
 
@@ -62,6 +63,47 @@ def parse_request_params(request, *params):
             raise BadRequestException(msg = f"Missing {param} parameter")
     
     return [request.args[param] for param in params]
+  
+@api.route('/api_key/set', methods=['POST', 'OPTIONS', 'GET'])
+def set_api_key():
+    global app
+    
+    @after_this_request
+    def add_header(resp):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        return resp
+    
+    if request.method == "OPTIONS" or request.method == 'GET':
+        return "OK", 200
+
+    try:
+        body = request.get_json(force=True)
+    except BadRequestException as exc:
+        raise exc
+    
+    
+    if app is None:
+        raise NotInitializedException
+    
+    res = app.set_api_key(body['api_key'])
+    
+    return jsonify({"result": res if res == body['api_key'] else None}), 200
+
+@api.route('/api_key', methods=['GET'])
+def api_key():
+    global app
+    
+    @after_this_request
+    def add_header(resp):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp
+    
+    if app is None:
+        raise NotInitializedException
+    
+    res = app.get_api_key()
+    return jsonify({"result": res}), 200
     
 @api.route('/languages/get', methods=['GET'])
 def get_languages():
