@@ -15,8 +15,11 @@ params = {
 
 class MSTranslatorClient(TranslatorClient):
   
-  def __init__(self, api_key):
-    self.api_key = api_key
+  def __init__(self):
+    self.api_key = None
+    
+  def has_api_key(self):
+    return self.api_key is not None
   
   def headers(self):
     return  {
@@ -80,6 +83,10 @@ class MSTranslatorClient(TranslatorClient):
           request = requests.post(url, params=params, headers=self.headers(), json=body, timeout=5.0)
           response = request.json()
           # print(json.dumps(response, sort_keys=True, indent=4, ensure_ascii=False, separators=(',', ': ')))
+          if not isinstance(response, list):
+            print("Unable to obtain a translation from the service. Most likely, the API key is not valid or the account " +
+                  "is not subscrined to the translation service")
+            return None
           text = response[0]["translations"][0]["text"]
           return re.sub("^'", "", re.sub("'$", "", text))
       except Exception as e:

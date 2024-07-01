@@ -12,7 +12,7 @@ api = Flask(__name__)
 def start_server():
     api.run(port=5000)
     
-app = None
+app = VocabBuilder()
 
 class NotInitializedException(Exception):
     def __init__(self):
@@ -34,7 +34,7 @@ def error_handler(err):
 def init():
     global app
     try:
-        lang1, lang2 = parse_request_params(request, 'from_lang', 'to_lang')
+        lang1, lang2, api_lookup = parse_request_params(request, 'from_lang', 'to_lang', 'api_lookup')
     except BadRequestException as exc:
         lang1, lang2 = "", ""
     
@@ -44,14 +44,14 @@ def init():
         return resp
 
     try:
-        app = VocabBuilder(no_trans_check = False,
-                no_word_lookup = False,
-                min_correct = int(request.args['min_correct']) or 5,
-                min_age = int(request.args['min_age']) or 15,
-                word_order= "from-to",
-                from_lang = lang1,
-                to_lang = lang2,
-                cli_launch = False)
+        app.initialize(no_trans_check = False,
+          no_word_lookup = api_lookup.upper() == 'FALSE',
+          min_correct = int(request.args['min_correct']) or 5,
+          min_age = int(request.args['min_age']) or 15,
+          word_order= "from-to",
+          from_lang = lang1,
+          to_lang = lang2,
+          cli_launch = False)
     except Exception as exc:
         raise BadRequestException(exc.args[0])
     
@@ -83,7 +83,7 @@ def set_api_key():
         raise exc
     
     
-    if app is None:
+    if not app.initialized:
         raise NotInitializedException
     
     res = app.set_api_key(body['api_key'])
@@ -99,7 +99,7 @@ def api_key():
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp
     
-    if app is None:
+    if not app.initialized:
         raise NotInitializedException
     
     res = app.get_api_key()
@@ -125,7 +125,7 @@ def get_vocab():
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp
     
-    if app is None:
+    if not app.initialized:
         raise NotInitializedException
     vocab = app.get_vocab()
     return jsonify(vocab), 200
@@ -138,7 +138,7 @@ def get_default_langs():
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp
     
-    if app is None:
+    if not app.initialized:
         raise NotInitializedException
     default_langs = app.get_default_langs()
     return jsonify(default_langs), 200
@@ -152,7 +152,7 @@ def translate():
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp
     
-    if app is None:
+    if not app.initialized:
         raise NotInitializedException
     
     try:
@@ -172,7 +172,7 @@ def select_words():
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp
     
-    if app is None:
+    if not app.initialized:
         raise NotInitializedException
     
     app.select_words()
@@ -187,7 +187,7 @@ def next_word():
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp
     
-    if app is None:
+    if not app.initialized:
         raise NotInitializedException
 
     
@@ -211,7 +211,7 @@ def delete_vocab_entry():
         raise exc
     
     
-    if app is None:
+    if not app.initialized:
         raise NotInitializedException
     
     # word_entry = json.loads(json_str)
@@ -245,7 +245,7 @@ def add_vocab_entry():
         raise exc
     
     
-    if app is None:
+    if not app.initialized:
         raise NotInitializedException
     
     # word_entry = json.loads(json_str)
@@ -271,7 +271,7 @@ def update_vocab_entry():
         raise exc
     
     
-    if app is None:
+    if not app.initialized:
         raise NotInitializedException
     
     # word_entry = json.loads(json_str)
@@ -298,7 +298,7 @@ def vocab_mark_correct():
         raise exc
     
     
-    if app is None:
+    if not app.initialized:
         raise NotInitializedException
     
     app.mark_correct(entry['text'])
@@ -325,7 +325,7 @@ def set_default_langs():
         raise exc
     
     
-    if app is None:
+    if not app.initialized:
         raise NotInitializedException
     
     # word_entry = json.loads(json_str)
@@ -351,7 +351,7 @@ def set_word_order():
         raise exc
     
     
-    if app is None:
+    if not app.initialized:
         raise NotInitializedException
     
     app.word_order = word_order['value']

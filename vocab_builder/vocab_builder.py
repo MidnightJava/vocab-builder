@@ -28,12 +28,16 @@ if API_KEY is None:
     sys.exit(0)
 
 class VocabBuilder():
+  
+    def __init__(self):
+      self.initialized = False
+      self.client = MSTranslatorClient()
 
-    def __init__(self, **kwargs):
+    def initialize(self, **kwargs):
         for k,v in kwargs.items():
             setattr(self, k, v)
         self.vocab_filename = f"{DATA_DIR}{sep}{self.to_lang}_{self.from_lang}_vocab"
-        self.client = MSTranslatorClient(API_KEY)
+        if not self.client.has_api_key(): self.client.set_api_key(API_KEY)
         if not self.no_word_lookup: 
             langs = self.client.get_languages()
             self.langs = langs if langs else {}
@@ -46,24 +50,25 @@ class VocabBuilder():
         self.initialize_vocab()
         
         if self.cli_launch:
-            if self.pr_avail_langs:
-                print("Available languages for translation")
-                print("Code\t\tName")
-                # print(json.dumps(self.langs, sort_keys=True, indent=4, ensure_ascii=False, separators=(',', ': ')))
-                for lang in self.get_avail_langs():
-                    print(f"{lang}\t\t{self.available_langs[lang]['name']}")
-                
-            elif self.pr_word_cnt:
-                vocab = self.get_vocab()
-                print(f"{len(vocab)} {self.to_langname} TO {self.from_langname} words saved")
-            elif self.import_vocab:
-                self.import_vocab_file(self.import_vocab)
-                self.export_vocab()
-            elif self.add_vocab:
-                self.run_add_vocab(self.no_trans_check)
-                self.export_vocab()
-            elif self.test_vocab:
-                self.run_test_vocab()
+          if self.pr_avail_langs:
+              print("Available languages for translation")
+              print("Code\t\tName")
+              # print(json.dumps(self.langs, sort_keys=True, indent=4, ensure_ascii=False, separators=(',', ': ')))
+              for lang in self.get_avail_langs():
+                  print(f"{lang}\t\t{self.available_langs[lang]['name']}")
+              
+          elif self.pr_word_cnt:
+              vocab = self.get_vocab()
+              print(f"{len(vocab)} {self.to_langname} TO {self.from_langname} words saved")
+          elif self.import_vocab:
+              self.import_vocab_file(self.import_vocab)
+              self.export_vocab()
+          elif self.add_vocab:
+              self.run_add_vocab(self.no_trans_check)
+              self.export_vocab()
+          elif self.test_vocab:
+              self.run_test_vocab()
+        self.initialized = True
     
     def get_api_key(self):
       return self.client.get_api_key()
@@ -238,17 +243,19 @@ class VocabBuilder():
                 done = True
             else:
                 if len(self.langs) == 0:
+                    # Manual translation
                     w_2 = input(f"{lang2['name']} word: ").lower()
                     if self.word_order == "from-to":
                          new_words.append((w_1, w_2))
                     else:
                         new_words.append((w_2, w_1))
                 else:
+                    # Translation service lookup
                     w_2 = self.client.translate(lang1["id"], lang2["id"], w_1)
                     if w_2:
                         w_2 = w_2.lower()
                     else:
-                        print("The translation lookup failed. Check you Internet connection and your service subscription status. " +
+                        print("The translation lookup failed. Check your Internet connection and your service subscription status. " +
                               "Use option --no-word-lookup (-nl) to skip the online lookup and specify translations manuially.")
                         sys.exit(0)
                     if w_2 and w_2 != w_1:
@@ -413,17 +420,18 @@ if __name__ == "__main__":
                          help="Present words in the language you're learning (default) or the language you already know")
     
     args = parser.parse_args()
-    VocabBuilder(add_vocab = args.add_vocab,
-                 no_trans_check = args.no_trans_check,
-                 test_vocab = args.test_vocab,
-                 import_vocab = args.import_vocab,
-                 no_word_lookup = args.no_word_lookup,
-                 min_correct = args.min_correct,
-                 min_age = args.min_age,
-                 word_order=args.word_order,
-                 pr_word_cnt = args.pr_word_cnt,
-                 pr_avail_langs = args.pr_avail_langs,
-                 from_lang = args.from_lang,
-                 to_lang = args.to_lang,
-                 cli_launch = True)
+    app = VocabBuilder()
+    app.initialize(add_vocab = args.add_vocab,
+      no_trans_check = args.no_trans_check,
+      test_vocab = args.test_vocab,
+      import_vocab = args.import_vocab,
+      no_word_lookup = args.no_word_lookup,
+      min_correct = args.min_correct,
+      min_age = args.min_age,
+      word_order=args.word_order,
+      pr_word_cnt = args.pr_word_cnt,
+      pr_avail_langs = args.pr_avail_langs,
+      from_lang = args.from_lang,
+      to_lang = args.to_lang,
+      cli_launch = True)
     
