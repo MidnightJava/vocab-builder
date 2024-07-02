@@ -34,7 +34,7 @@ def error_handler(err):
 def init():
     global app
     try:
-        lang1, lang2, api_lookup = parse_request_params(request, 'from_lang', 'to_lang', 'api_lookup')
+        lang1, lang2 = parse_request_params(request, 'from_lang', 'to_lang')
     except BadRequestException as exc:
         lang1, lang2 = "", ""
     
@@ -45,7 +45,7 @@ def init():
 
     try:
         app.initialize(no_trans_check = False,
-          no_word_lookup = api_lookup.upper() == 'FALSE',
+          no_word_lookup = False,
           min_correct = int(request.args['min_correct']) or 5,
           min_age = int(request.args['min_age']) or 15,
           word_order= "from-to",
@@ -56,6 +56,32 @@ def init():
         raise BadRequestException(exc.args[0])
     
     return jsonify({"Result": "Initialized"})
+
+@api.route('/apilookup/set', methods=['POST', 'OPTIONS', 'GET'])
+def set_api_lookup():
+  global app
+    
+  @after_this_request
+  def add_header(resp):
+      resp.headers["Access-Control-Allow-Origin"] = "*"
+      resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+      return resp
+  
+  if request.method == "OPTIONS" or request.method == 'GET':
+      return "OK", 200
+
+  try:
+      body = request.get_json(force=True)
+  except BadRequestException as exc:
+      raise exc
+  
+  
+  if not app.initialized:
+      raise NotInitializedException
+  
+  res = app.set_api_lookup(body['api_lookup'])
+  
+  return jsonify({"result": res}), 200
 
 def parse_request_params(request, *params):
     for param in params:
@@ -359,6 +385,28 @@ def set_word_order():
     app.select_words()
     
     return jsonify({}),200
+
+@api.route('/vocab/import_csv', methods=['GET', 'OPTIONS', 'POST'])
+def import_vocab():
+    @after_this_request
+    def add_header(resp):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        return resp
+    
+    if request.method == "OPTIONS" or request.method == 'GET':
+        return "OK", 200
+    
+    global app
+    if request.method == 'POST':
+        if 'file' not in request.files:
+          print('No file found in request')
+        file = request.files['file']
+        if file.filename == '':
+            print('No file name specified')
+        if file:
+            app.import_vocab_file(file=file.read())
+    return jsonify({"Result": "OK"}),200
     
     
 if __name__ == "__main__":

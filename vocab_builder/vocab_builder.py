@@ -2,6 +2,7 @@
 
 from dotenv import load_dotenv
 import os
+import shutil
 load_dotenv()
 
 import json
@@ -15,7 +16,7 @@ from random import randint
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from ms_translater_client import MSTranslatorClient
 from contextlib import suppress
-
+import io
 DATA_DIR = "data"
 
 API_KEY = os.getenv("API_KEY", None)
@@ -76,6 +77,10 @@ class VocabBuilder():
     
     def set_api_key(self, api_key):
       return self.client.set_api_key(api_key)
+    
+    def set_api_lookup(self, api_lookup):
+        self.no_word_lookup = api_lookup == False
+        return "OK"
         
     def get_avail_langs(self):
         if not getattr(self, "available_langs", None):
@@ -128,10 +133,13 @@ class VocabBuilder():
                 # except:
                 #     pass
     
-    def import_vocab_file(self, filename):
+    def import_vocab_file(self, filename=None, file=None):
         #Assumes the first column is the TO language and the second column is the FROM language
-        with open(filename, mode='r') as file:
-            csvFile = csv.reader(file, quotechar='|',  quoting=csv.QUOTE_NONE)
+        if file:
+        # with open(filename, mode='r') as file:
+            file = io.BytesIO(file)
+            self.backup_vocab_file()
+            csvFile = csv.reader(io.TextIOWrapper(file, encoding='utf-8'), quotechar='|',  quoting=csv.QUOTE_NONE)
             missed_translation = False
             untranslated_words = set()
             translated_words = []
@@ -190,6 +198,7 @@ class VocabBuilder():
                 for w in duplicate_words: print(w)
             self.set_vocab(vocab)
             print(f"{len(translated_words) - len(duplicate_words)} words imnported")
+            self.export_vocab()
                 
                 
     
@@ -262,9 +271,14 @@ class VocabBuilder():
             entry['lastCorrect'] = date.today().isoformat()
             self.set_vocab(vocab)
             with suppress(ValueError):
+              # The word to be removed will be given in the oposite language in which
+              # the list of selected words is represented.
               to_remove = self.get_word_in_other_lang(word)
               for word in to_remove:
                 self.selected_words.remove(word)
+    
+    def backup_vocab_file(self):
+        shutil.copy2(self.vocab_filename, f"{self.vocab_filename}.bk")
           
     def run_add_vocab(self, no_trans_check):
         done = False
@@ -352,6 +366,7 @@ class VocabBuilder():
     def set_vocab(self, vocab):
         with open(self.vocab_filename, 'w') as f:
             f.write(json.dumps(vocab))
+        self.backup_vocab_file()
             
     def merge_vocab(self, new_words, force=False, update=False):
         vocab = self.get_vocab()
