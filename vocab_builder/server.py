@@ -175,8 +175,9 @@ def select_words():
     if not app.initialized:
         raise NotInitializedException
     
-    app.select_words()
-    return jsonify({"Result": "Success"}), 200
+    count = app.select_words()
+    print(f"{count} WORDS SELECTED")
+    return jsonify({"Result": count}), 200
 
 @api.route('/vocab/next_word', methods=['GET'])
 def next_word():

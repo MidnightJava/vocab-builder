@@ -14,6 +14,7 @@ from datetime import date
 from random import randint
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from ms_translater_client import MSTranslatorClient
+from contextlib import suppress
 
 DATA_DIR = "data"
 
@@ -122,10 +123,10 @@ class VocabBuilder():
             c = readchar.readkey()
             if c == '\n':
                 self.mark_correct(word if self.word_order == 'to-from' else trans)
-                try:
-                    self.selected_words.remove(word)
-                except:
-                    pass
+                # try:
+                #     self.selected_words.remove(word)
+                # except:
+                #     pass
     
     def import_vocab_file(self, filename):
         #Assumes the first column is the TO language and the second column is the FROM language
@@ -207,12 +208,13 @@ class VocabBuilder():
         
         vocab = dict(filter(select, self.get_vocab().items()))
         if self.word_order == "from-to":
-                vals = list(map( lambda v: v['translations'], filter(lambda k: k != "meta", vocab.values())))
+                vals = list(map( lambda item: item[1]['translations'], filter(lambda item: item[0] != "meta", vocab.items())))
                 #Now flatten it
                 self.selected_words = [item for sublist in vals for item in sublist]
         else:
             self.selected_words = list(filter(lambda k: k != "meta", vocab.keys()))
         self.selected_count = 0
+        return len(self.selected_words)
     
     def next_word(self):
         if not len(self.selected_words):
@@ -221,14 +223,48 @@ class VocabBuilder():
         self.selected_count+= 1
         return {"text": self.selected_words[idx], "count": self.selected_count, "size": len(self.selected_words)}
         #Word is removed from selected_words in run_test_vocab method, only if user knew the translation
+
+    def get_vocab_entry(self, word):
+      vocab = self.get_vocab()
+      if self.word_order == 'from-to':
+          return list(map(lambda w: w.strip(), word.split(',')))
+      for entry in vocab.items():
+        if entry[0] == "meta": continue
+        for w in entry[1]["translations"]:
+            if w == word:
+                return entry[0]
+      return None
     
+    def get_word_in_other_lang(self, word):
+        vocab = self.get_vocab()
+        translations = []
+        if self.word_order == 'to-from':
+            for entry in vocab.items():
+              if entry[0] == "meta": continue
+              for w in entry[1]["translations"]:
+                  if w == word:
+                      translations.append(entry[0])
+                      break
+        else:
+          entry = vocab.get(word, None)
+          if entry: translations = entry['translations']
+        return translations
+            
+
     def mark_correct(self, word):
         vocab = self.get_vocab()
-        entry = vocab.get(word, None)
-        if entry is not None:
-          entry['count']+= 1
-          entry['lastCorrect'] = date.today().isoformat()
-          self.set_vocab(vocab)
+        keys = self.get_vocab_entry(word)
+        if not isinstance(keys, list): keys = [keys]
+        for key in keys:
+          entry = vocab.get(key, None)
+          if entry is not None:
+            entry['count']+= 1
+            entry['lastCorrect'] = date.today().isoformat()
+            self.set_vocab(vocab)
+            with suppress(ValueError):
+              to_remove = self.get_word_in_other_lang(word)
+              for word in to_remove:
+                self.selected_words.remove(word)
           
     def run_add_vocab(self, no_trans_check):
         done = False
@@ -302,11 +338,14 @@ class VocabBuilder():
             return ",".join(vocab[word]["translations"])
         else:
             trans = ""
+            done = False
             for k, v in vocab.items():
+                if done: break
                 if k == "meta": continue
                 for w in v["translations"]:
                     if w == word:
                         trans = k
+                        done = True
                         break
             return trans 
         
