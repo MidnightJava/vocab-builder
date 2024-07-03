@@ -387,7 +387,7 @@ def set_word_order():
     return jsonify({}),200
 
 @api.route('/vocab/import_csv', methods=['GET', 'OPTIONS', 'POST'])
-def import_vocab():
+def import_csv():
     @after_this_request
     def add_header(resp):
         resp.headers["Access-Control-Allow-Origin"] = "*"
@@ -398,16 +398,73 @@ def import_vocab():
         return "OK", 200
     
     global app
+    if not app.initialized:
+        raise NotInitializedException
+    
     if request.method == 'POST':
         if 'file' not in request.files:
-          print('No file found in request')
+          print('Import CSV vocab: No file found in request')
         file = request.files['file']
         if file.filename == '':
-            print('No file name specified')
+            print('Import CSV vocab: No file name specified')
         if file:
-            app.import_vocab_file(file=file.read())
+            app.import_vocab_csv(file=file.read())
+    return jsonify({"Result": "OK"}),200
+
+@api.route('/vocab/export_csv', methods=['GET'])
+def export_csv():
+    @after_this_request
+    def add_header(resp):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        return resp
+
+    global app
+    if not app.initialized:
+        raise NotInitializedException
+    
+    data = app.export_vocab_csv()
+    return jsonify({"file": data}),200
+
+@api.route('/vocab/import_json', methods=['GET', 'OPTIONS', 'POST'])
+def import_json():
+    @after_this_request
+    def add_header(resp):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        return resp
+    
+    if request.method == "OPTIONS" or request.method == 'GET':
+        return "OK", 200
+    
+    global app
+    if not app.initialized:
+        raise NotInitializedException
+    
+    if request.method == 'POST':
+        if 'file' not in request.files:
+          print('Import JSON vocab: No file found in request')
+        file = request.files['file']
+        if file.filename == '':
+            print('Import JSON vocabn: No file name specified')
+        if file:
+            app.import_vocab_json(file=file)
     return jsonify({"Result": "OK"}),200
     
+@api.route('/vocab/export_json', methods=['GET'])
+def export_json():
+    @after_this_request
+    def add_header(resp):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        return resp
+
+    global app
+    if not app.initialized:
+        raise NotInitializedException
+    
+    data = app.export_vocab_json()
+    return jsonify({"file": data}),200
     
 if __name__ == "__main__":
     start_server()

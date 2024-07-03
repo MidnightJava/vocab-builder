@@ -39,6 +39,8 @@ class VocabBuilder():
         for k,v in kwargs.items():
             setattr(self, k, v)
         self.vocab_filename = f"{DATA_DIR}{sep}{self.to_lang}_{self.from_lang}_vocab"
+        self.vocab_filename_json = f"{self.vocab_filename}.json"
+        self.vocab_filename_csv = f"{self.vocab_filename}.csv"
         if not self.client.has_api_key(): self.client.set_api_key(API_KEY)
         if not self.no_word_lookup: 
             langs = self.client.get_languages()
@@ -63,7 +65,7 @@ class VocabBuilder():
               vocab = self.get_vocab()
               print(f"{len(vocab)} {self.to_langname} TO {self.from_langname} words saved")
           elif self.import_vocab:
-              self.import_vocab_file(self.import_vocab)
+              self.import_vocab_csv(filename=self.import_vocab)
               self.export_vocab()
           elif self.add_vocab:
               self.run_add_vocab(self.no_trans_check)
@@ -128,80 +130,92 @@ class VocabBuilder():
             c = readchar.readkey()
             if c == '\n':
                 self.mark_correct(word if self.word_order == 'to-from' else trans)
-                # try:
-                #     self.selected_words.remove(word)
-                # except:
-                #     pass
     
-    def import_vocab_file(self, filename=None, file=None):
+    def import_vocab_csv(self, filename=None, file=None):
         #Assumes the first column is the TO language and the second column is the FROM language
+        self.backup_vocab_file()
         if file:
-        # with open(filename, mode='r') as file:
             file = io.BytesIO(file)
-            self.backup_vocab_file()
-            csvFile = csv.reader(io.TextIOWrapper(file, encoding='utf-8'), quotechar='|',  quoting=csv.QUOTE_NONE)
-            missed_translation = False
-            untranslated_words = set()
-            translated_words = []
             print(f"{len(file.readlines())} words to import")
             file.seek(0)
-            for row in csvFile:
-                if len(row) == 1: row.append("")
-                if row[0] and not row[1]:
-                    if not self.no_word_lookup:
-                        row[1] = self.client.translate(self.to_lang, self.from_lang, row[0])
-                    if row[1] == row[0]:
-                        #TODO handle case where word is identical in both languages
-                        missed_translation = True
-                        untranslated_words.add(row[0])
-                    else:
-                        translated_words.append((row[0], row[1]))
-                elif row[1] and not row[0]:
-                    if not self.no_word_lookup:
-                        row[0] = self.client.translate(self.from_lang, self.to_lang, row[1])
-                    if row[0] == row[1]:
-                        #TODO handle case where word is identical in both languages
-                        missed_translation = True
-                        untranslated_words.add(row[1])
-                    else:
-                        translated_words.append((row[0], row[1]))
+            csvFile = csv.reader(io.TextIOWrapper(file, encoding='utf-8'), quotechar='|',  quoting=csv.QUOTE_NONE)
+        elif filename:
+            file = open(filename, 'r')
+            print(f"{len(file.readlines())} words to import")
+            file.seek(0)
+            csvFile = csv.reader(file, quotechar='|',  quoting=csv.QUOTE_NONE)
+        missed_translation = False
+        untranslated_words = set()
+        translated_words = []
+        for row in csvFile:
+            if len(row) == 1: row.append("")
+            if row[0] and not row[1]:
+                if not self.no_word_lookup:
+                    row[1] = self.client.translate(self.to_lang, self.from_lang, row[0])
+                if row[1] == row[0]:
+                    #TODO handle case where word is identical in both languages
+                    missed_translation = True
+                    untranslated_words.add(row[0])
                 else:
                     translated_words.append((row[0], row[1]))
-                    if len(row) > 2:
-                        for i in range(2, len(row)):
-                            translated_words.append((row[0], row[i]))
-            if missed_translation:
-                print("The following words were not imported because a translation could not be determined and was not explicitly provided. " +
-                      "This error will also occur if the translation is identical to the original word.")
-                for w in untranslated_words: print(w)
-            
-            vocab = self.get_vocab()
-            duplicate_words = set()
-            duplicate_translation = False
-            for w1, w2 in translated_words:
-                [w1, w2] = [w1.strip(), w2.strip()]
-                if not w1 in vocab:
-                    vocab[w1] = {
-                        "translations": [w2],
-                        "lastCorrect": "",
-                        "count": 0
-                    }
+            elif row[1] and not row[0]:
+                if not self.no_word_lookup:
+                    row[0] = self.client.translate(self.from_lang, self.to_lang, row[1])
+                if row[0] == row[1]:
+                    #TODO handle case where word is identical in both languages
+                    missed_translation = True
+                    untranslated_words.add(row[1])
                 else:
-                    val = vocab[w1]
-                    if w2 in val["translations"]:
-                        duplicate_translation = True
-                        duplicate_words.add(w2)
-                    else:
-                        val["translations"].append(w2)
-            if duplicate_translation:
-                print("The following words were not imported because a translation entry already exists")
-                for w in duplicate_words: print(w)
-            self.set_vocab(vocab)
-            print(f"{len(translated_words) - len(duplicate_words)} words imnported")
-            self.export_vocab()
-                
-                
-    
+                    translated_words.append((row[0], row[1]))
+            else:
+                translated_words.append((row[0], row[1]))
+                if len(row) > 2:
+                    for i in range(2, len(row)):
+                        translated_words.append((row[0], row[i]))
+        if missed_translation:
+            print("The following words were not imported because a translation could not be determined and was not explicitly provided. " +
+                  "This error will also occur if the translation is identical to the original word.")
+            for w in untranslated_words: print(w)
+        
+        vocab = self.get_vocab()
+        duplicate_words = set()
+        duplicate_translation = False
+        for w1, w2 in translated_words:
+            [w1, w2] = [w1.strip(), w2.strip()]
+            if not w1 in vocab:
+                vocab[w1] = {
+                    "translations": [w2],
+                    "lastCorrect": "",
+                    "count": 0
+                }
+            else:
+                val = vocab[w1]
+                if w2 in val["translations"]:
+                    duplicate_translation = True
+                    duplicate_words.add(w2)
+                else:
+                    val["translations"].append(w2)
+        if duplicate_translation:
+            print("The following words were not imported because a translation entry already exists")
+            for w in duplicate_words: print(w)
+        self.set_vocab(vocab)
+        print(f"{len(translated_words) - len(duplicate_words)} words imnported")
+        self.export_vocab()
+        if file:
+            file.close()
+
+    def import_vocab_json(self, file=None):
+       self.backup_vocab_file()
+       file.save(f"{self.vocab_filename_json}")
+       
+    def export_vocab_csv(self):
+        with open(f"{self.vocab_filename_csv}") as file:
+            return file.read()
+        
+    def export_vocab_json(self):
+        with open(f"{self.vocab_filename_json}") as file:
+            return file.read()
+  
     def select_words(self):
         def select(entry):
             k,v = entry
@@ -278,7 +292,7 @@ class VocabBuilder():
                 self.selected_words.remove(word)
     
     def backup_vocab_file(self):
-        shutil.copy2(self.vocab_filename, f"{self.vocab_filename}.bk")
+        shutil.copy2(self.vocab_filename_json, f"{self.vocab_filename_json}.bk")
           
     def run_add_vocab(self, no_trans_check):
         done = False
@@ -331,9 +345,9 @@ class VocabBuilder():
         
     def get_vocab(self, l1=None, l2=None):
         if l1 == None or l2 == None:
-            vocab_file = self.vocab_filename
+            vocab_file = self.vocab_filename_json
         else:
-            vocab_file = f"{DATA_DIR}{sep}{l2}_{l1}_vocab"
+            vocab_file = f"{DATA_DIR}{sep}{l2}_{l1}_vocab.json"
         if exists(vocab_file):
             with open(vocab_file, 'r') as f:
                 contents = f.read()
@@ -364,7 +378,7 @@ class VocabBuilder():
             return trans 
         
     def set_vocab(self, vocab):
-        with open(self.vocab_filename, 'w') as f:
+        with open(self.vocab_filename_json, 'w') as f:
             f.write(json.dumps(vocab))
         self.backup_vocab_file()
             
@@ -386,8 +400,8 @@ class VocabBuilder():
         self.set_vocab(vocab)
     
     def initialize_vocab(self):
-        if not exists(self.vocab_filename):
-            with open(self.vocab_filename, 'a') as f:
+        if not exists(self.vocab_filename_json):
+            with open(self.vocab_filename_json, 'a') as f:
                 f.write(json.dumps({"meta": {
                     "val_langid": f"{self.to_lang}",
                     "val_langname": f"{self.to_langname}",
@@ -396,17 +410,17 @@ class VocabBuilder():
                 }}))
                 
     def set_default_langs(self, frm, to):
-         with open(f"{DATA_DIR}{sep}default.langs", 'w') as f:
+         with open(f"{DATA_DIR}{sep}default_langs.json", 'w') as f:
             f.write(json.dumps({"from": frm, "to": to}))
             
     def get_default_langs(self):
-        with open(f"{DATA_DIR}{sep}default.langs", 'r') as f:
+        with open(f"{DATA_DIR}{sep}default_langs.json", 'r') as f:
             default_langs = json.loads(f.read())
             return default_langs
                 
     def export_vocab(self):
         vocab = self.get_vocab()
-        with open(f"{DATA_DIR}{sep}{self.to_lang}_{self.from_lang}_exported_words", "w") as file:
+        with open(f"{DATA_DIR}{sep}{self.to_lang}_{self.from_lang}_exported_words.csv", "w") as file:
             csvwriter = csv.writer(file,  quotechar='|',  quoting=csv.QUOTE_NONE)
             for k,v in vocab.items():
                 if k == "meta": continue
