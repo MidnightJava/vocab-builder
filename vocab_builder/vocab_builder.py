@@ -87,7 +87,6 @@ class VocabBuilder():
     def get_avail_langs(self):
         if not getattr(self, "available_langs", None):
             self.available_langs = self.client.get_languages()
-        # print(self.available_langs)
         return self.available_langs
     
     def translate(self, text, from_lang, to_lang):
@@ -186,7 +185,8 @@ class VocabBuilder():
                 vocab[w1] = {
                     "translations": [w2],
                     "lastCorrect": "",
-                    "count": 0
+                    "count": 0,
+                    "part": ""
                 }
             else:
                 val = vocab[w1]
@@ -396,7 +396,7 @@ class VocabBuilder():
             else:
                 if update:
                    vocab = dict(filter(lambda x: x[1]['translations'] != w_from_l, vocab.items()))
-                vocab[w_to] = {"translations": w_from_l, "lastCorrect": "", "count": 0}   
+                vocab[w_to] = {"translations": w_from_l, "lastCorrect": "", "count": 0, "part": ""}   
         self.set_vocab(vocab)
     
     def initialize_vocab(self):
