@@ -18,6 +18,7 @@ from ms_translater_client import MSTranslatorClient
 from contextlib import suppress
 import io
 DATA_DIR = "data"
+PARTS_OF_SPEECH_FILE = "parts_of_speech.json"
 
 API_KEY = os.getenv("API_KEY", None)
 if API_KEY is None:
@@ -106,30 +107,7 @@ class VocabBuilder():
         print(f"Invlaid language: {lang}")
         return None
     
-    def run_test_vocab(self):        
-        done = False
-        lang1 = {"id": self.from_lang, "name": self.from_langname}
-        lang2 = {"id": self.to_lang, "name": self.to_langname}
-        if self.word_order == "from-to":
-            [lang1, lang2] = [lang2, lang1]
-        self.select_words()
-        while not done:
-            word = self.next_word()['text']
-            if word is None:
-                print("No more words to review for this round")
-                done = True
-                continue
-            ans = input(f"\n{lang2['name']} word: {word}\n\nPress Enter to see translation, any other key plus Enter to quit")
-            if len(ans):
-                done = True
-                break
-            trans = self.get_saved_translation(word)
-            print(f"\n{lang1['name']} Translation: {trans}\n")
-            print("Press Enter if you knew the translation, any other key if you did not ")
-            c = readchar.readkey()
-            if c == '\n':
-                self.mark_correct(word if self.word_order == 'to-from' else trans)
-    
+    # Create vocab csv file either from file on file sytem or bytes provided in function call
     def import_vocab_csv(self, filename=None, file=None):
         #Assumes the first column is the TO language and the second column is the FROM language
         self.backup_vocab_file()
@@ -200,34 +178,42 @@ class VocabBuilder():
             for w in duplicate_words: print(w)
         self.set_vocab(vocab)
         print(f"{len(translated_words) - len(duplicate_words)} words imnported")
+        # Save a csv copy of the vocab json file
         self.export_vocab()
         if file:
             file.close()
 
+    # Save file object as vocab json file
     def import_vocab_json(self, file=None):
        self.backup_vocab_file()
        file.save(f"{self.vocab_filename_json}")
-       
+      
+    # Get vocab entries from csv file
     def export_vocab_csv(self):
         with open(f"{self.vocab_filename_csv}") as file:
             return file.read()
-        
+    
+    # Get vocab entries from json file
     def export_vocab_json(self):
         with open(f"{self.vocab_filename_json}") as file:
             return file.read()
   
     def select_words(self):
         def select(entry):
+            retval = True
             k,v = entry
             if k == 'meta':
-                return False
-            if v["count"] <= self.min_correct:
-                return True
-            if not len(v["lastCorrect"]):
-                return True
-            last_correct = date.fromisoformat(v['lastCorrect'])
-            delta_days = (date.today() - last_correct).days
-            return delta_days >= int(self.min_age)
+                retval = False
+            else:
+              if v["count"] <= self.min_correct:
+                  retval &= True
+              if not len(v["lastCorrect"]):
+                  retval &= True
+              else:
+                last_correct = date.fromisoformat(v['lastCorrect'])
+                delta_days = (date.today() - last_correct).days
+                retval &= (delta_days >= int(self.min_age))
+            return retval
         
         vocab = dict(filter(select, self.get_vocab().items()))
         if self.word_order == "from-to":
@@ -291,9 +277,171 @@ class VocabBuilder():
               for word in to_remove:
                 self.selected_words.remove(word)
     
+    def get_parts_of_speech(self):
+      file = os.path.join(DATA_DIR, PARTS_OF_SPEECH_FILE)
+      with open(file, 'r') as f:
+        try:
+          parts = json.load(f)
+        except Exception as e:
+            print(e)
+            parts = []
+        return parts
+    
+    def set_parts_of_speech(self, parts):
+      try:
+          s = json.dumps(parts)
+      except:
+          print(f"Uable to parse parts of speech as json: {str(parts)}")
+          return False
+      file = os.path.join(DATA_DIR, PARTS_OF_SPEECH_FILE)
+      with open(file, 'w') as f:
+          f.write(s)
+      return True
+
+    # Save a copy of the vocab json file
     def backup_vocab_file(self):
         shutil.copy2(self.vocab_filename_json, f"{self.vocab_filename_json}.bk")
-          
+    
+    def delete_entry(self, key):
+        vocab = self.get_vocab()
+        if key in vocab:
+            del vocab[key]
+            self.set_vocab(vocab)
+        
+    def get_vocab(self, l1=None, l2=None):
+        if l1 == None or l2 == None:
+            vocab_file = self.vocab_filename_json
+        else:
+            vocab_file = f"{DATA_DIR}{sep}{l2}_{l1}_vocab.json"
+        if exists(vocab_file):
+            with open(vocab_file, 'r') as f:
+                contents = f.read()
+                try:
+                    contents = json.loads(contents).items()
+                    filtered = dict(filter(lambda el: el[0] != "meta", contents))
+                except:
+                    filtered = {}
+                return filtered
+        else:
+            return {}
+        
+    def get_saved_translation(self, word):
+        vocab = self.get_vocab()
+        if self.word_order == "to-from":
+            return ",".join(vocab[word]["translations"])
+        else:
+            trans = ""
+            done = False
+            for k, v in vocab.items():
+                if done: break
+                if k == "meta": continue
+                for w in v["translations"]:
+                    if w == word:
+                        trans = k
+                        done = True
+                        break
+            return trans 
+    
+    # Write vocab entries in memory to json file
+    def set_vocab(self, vocab):
+        with open(self.vocab_filename_json, 'w') as f:
+            f.write(json.dumps(vocab))
+        self.backup_vocab_file()
+            
+    def merge_vocab(self, new_words, force=False, update=False):
+        vocab = self.get_vocab()
+        for w_from, w_to in new_words:
+            if isinstance(w_from, str):
+                w_from_l = w_from.split(',')
+            else:
+                w_from_l = w_from
+            if w_to in vocab:
+                trans = vocab[w_to]["translations"]
+                if not w_from in trans:
+                  trans.append(w_from)
+            else:
+                if update:
+                   vocab = dict(filter(lambda x: x[1]['translations'] != w_from_l, vocab.items()))
+                vocab[w_to] = {"translations": w_from_l, "lastCorrect": "", "count": 0}   
+        self.set_vocab(vocab)
+    
+    def initialize_vocab(self):
+        if not exists(self.vocab_filename_json):
+            with open(self.vocab_filename_json, 'a') as f:
+                f.write(json.dumps({"meta": {
+                    "val_langid": f"{self.from_lang}",
+                    "val_langname": f"{self.from_langname}",
+                    "key_langid": f"{self.to_lang}",
+                    "key_langname": f"{self.to_langname}"
+                }}))
+                
+    def set_default_langs(self, frm, to):
+         with open(f"{DATA_DIR}{sep}default_langs.json", 'w') as f:
+            f.write(json.dumps({"from": frm, "to": to}))
+            
+    def get_default_langs(self):
+        with open(f"{DATA_DIR}{sep}default_langs.json", 'r') as f:
+            default_langs = json.loads(f.read())
+            return default_langs
+
+    # Save the in-memory vocab as a csv file            
+    def export_vocab(self):
+        vocab = self.get_vocab()
+        with open(f"{DATA_DIR}{sep}{self.to_lang}_{self.from_lang}_exported_words.csv", "w") as file:
+            csvwriter = csv.writer(file,  quotechar='|',  quoting=csv.QUOTE_NONE)
+            for k,v in vocab.items():
+                if k == "meta": continue
+                row = [k]
+                for w in v["translations"]:
+                    row.append(w)
+                try:
+                    csvwriter.writerow(row)
+                except:
+                    print(f"Bad row: {row}")
+                
+    def check_langs(self):
+        found_from = found_to = False
+        for k,v in self.langs.items():
+            if k == self.from_lang:
+                found_from = True
+                self.from_langname = v["name"]
+            elif k == self.to_lang:
+                found_to = True
+                self.to_langname = v["name"]
+            if found_from and found_to: break
+        if not found_from or not found_to:
+            missing = (self.from_lang if not found_from else "") + (f" {self.to_lang}" if not found_to else "")
+            return f"The following language(s) were specified but are not available: {missing}"
+        else:
+            return None
+        
+    ######################
+    # CLI-only functions #
+    ######################
+    def run_test_vocab(self):        
+        done = False
+        lang1 = {"id": self.from_lang, "name": self.from_langname}
+        lang2 = {"id": self.to_lang, "name": self.to_langname}
+        if self.word_order == "from-to":
+            [lang1, lang2] = [lang2, lang1]
+        self.select_words()
+        while not done:
+            word = self.next_word()['text']
+            if word is None:
+                print("No more words to review for this round")
+                done = True
+                continue
+            ans = input(f"\n{lang2['name']} word: {word}\n\nPress Enter to see translation, any other key plus Enter to quit")
+            if len(ans):
+                done = True
+                break
+            trans = self.get_saved_translation(word)
+            print(f"\n{lang1['name']} Translation: {trans}\n")
+            print("Press Enter if you knew the translation, any other key if you did not ")
+            c = readchar.readkey()
+            if c == '\n':
+                self.mark_correct(word if self.word_order == 'to-from' else trans)
+    
     def run_add_vocab(self, no_trans_check):
         done = False
         new_words = []

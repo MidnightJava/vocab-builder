@@ -169,6 +169,46 @@ def get_default_langs():
     default_langs = app.get_default_langs()
     return jsonify(default_langs), 200
 
+@api.route('/partsofspeech/get', methods=['GET'])
+def get_parts_of_speech():
+    global app
+    
+    @after_this_request
+    def add_header(resp):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp
+    
+    parts = app.get_parts_of_speech()
+    return jsonify(parts)
+
+@api.route('/partsofspeech/set', methods=['POST', 'OPTIONS', 'GET'])
+def set_parts_of_speech():
+    @after_this_request
+    def add_header(resp):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        return resp
+    
+    if request.method == "OPTIONS" or request.method == 'GET':
+        return "OK", 200
+    
+    global app
+    try:
+        jsonContent = request.get_json(force=True)
+    except BadRequestException as exc:
+        raise exc
+    
+    
+    if not app.initialized:
+        raise NotInitializedException
+    
+    res = app.set_parts_of_speech(jsonContent['partsOfSpeech'])
+    if res:
+      return jsonify({"Result": "OK"}),200
+    else:
+      return jsonify({"Result": "ERROR"}),200
+        
+
 @api.route('/vocab/translate', methods=['GET'])
 def translate():
     global app
@@ -332,7 +372,7 @@ def vocab_mark_correct():
     print(f"{entry['text']} is correct")
     return jsonify({}),200
     #TODO remove word from selection in app.mark_correct (and no longer in app.run_test_vocab) But look
-    #at word-order when removing, to know which language the removed word is given in
+    #at word-order when removing, to know which language the removed word is given in. DONE??
     
 @api.route('/languages/set_defaults', methods=['POST', 'OPTIONS', 'GET'])
 def set_default_langs():
