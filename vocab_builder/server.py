@@ -47,7 +47,8 @@ def init():
         app.initialize(no_trans_check = False,
           no_word_lookup = False,
           min_correct = int(request.args['min_correct']) or 5,
-          min_age = int(request.args['min_age']) or 15,
+          min_age = int(request.args['min_age']),
+          part_of_speech = request.args['part_of_speech'],
           word_order= "from-to",
           from_lang = lang1,
           to_lang = lang2,
@@ -316,7 +317,7 @@ def add_vocab_entry():
         raise NotInitializedException
     
     # word_entry = json.loads(json_str)
-    app.merge_vocab([(word_entry['from'], word_entry['to'])], force=True)
+    app.merge_vocab([(word_entry['from'], word_entry['to'], word_entry['part_of_speech'])], force=True)
     
     return jsonify({}),200
   
@@ -342,7 +343,7 @@ def update_vocab_entry():
         raise NotInitializedException
     
     # word_entry = json.loads(json_str)
-    app.merge_vocab([(word_entry['from'], word_entry['to'])], force=True, update=True)
+    app.merge_vocab([(word_entry['from'], word_entry['to'], word_entry['part_of_speech'])], force=True, update=True)
     
     return jsonify({}),200
 

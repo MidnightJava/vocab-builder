@@ -213,6 +213,11 @@ class VocabBuilder():
                 last_correct = date.fromisoformat(v['lastCorrect'])
                 delta_days = (date.today() - last_correct).days
                 retval &= (delta_days >= int(self.min_age))
+              if self.part_of_speech != 'Any':
+                try:
+                  retval &= (v['part'] == self.part_of_speech)
+                except:
+                    print(str(v))
             return retval
         
         vocab = dict(filter(select, self.get_vocab().items()))
@@ -273,6 +278,8 @@ class VocabBuilder():
             with suppress(ValueError):
               # The word to be removed will be given in the oposite language in which
               # the list of selected words is represented.
+              words = word.split(',')
+              word = words[0].strip() if len(words) else ''
               to_remove = self.get_word_in_other_lang(word)
               for word in to_remove:
                 self.selected_words.remove(word)
@@ -350,7 +357,7 @@ class VocabBuilder():
             
     def merge_vocab(self, new_words, force=False, update=False):
         vocab = self.get_vocab()
-        for w_from, w_to in new_words:
+        for w_from, w_to, part_of_speech in new_words:
             if isinstance(w_from, str):
                 w_from_l = w_from.split(',')
             else:
@@ -359,10 +366,12 @@ class VocabBuilder():
                 trans = vocab[w_to]["translations"]
                 if not w_from in trans:
                   trans.append(w_from)
+                vocab[w_to]['part'] = part_of_speech
             else:
                 if update:
                    vocab = dict(filter(lambda x: x[1]['translations'] != w_from_l, vocab.items()))
-                vocab[w_to] = {"translations": w_from_l, "lastCorrect": "", "count": 0}   
+                vocab[w_to] = {"translations": w_from_l, "lastCorrect": "", "count": 0, "part": part_of_speech}
+                
         self.set_vocab(vocab)
     
     def initialize_vocab(self):
@@ -484,117 +493,7 @@ class VocabBuilder():
                         ans = input("No translation found. Enter to skip, or type a custom translation: ")
                         if len(ans): new_words.append((ans, w_1))
         self.merge_vocab(new_words)
-        
-    def delete_entry(self, key):
-        vocab = self.get_vocab()
-        if key in vocab:
-            del vocab[key]
-            self.set_vocab(vocab)
-        
-    def get_vocab(self, l1=None, l2=None):
-        if l1 == None or l2 == None:
-            vocab_file = self.vocab_filename_json
-        else:
-            vocab_file = f"{DATA_DIR}{sep}{l2}_{l1}_vocab.json"
-        if exists(vocab_file):
-            with open(vocab_file, 'r') as f:
-                contents = f.read()
-                try:
-                    contents = json.loads(contents).items()
-                    filtered = dict(filter(lambda el: el[0] != "meta", contents))
-                except:
-                    filtered = {}
-                return filtered
-        else:
-            return {}
-        
-    def get_saved_translation(self, word):
-        vocab = self.get_vocab()
-        if self.word_order == "to-from":
-            return ",".join(vocab[word]["translations"])
-        else:
-            trans = ""
-            done = False
-            for k, v in vocab.items():
-                if done: break
-                if k == "meta": continue
-                for w in v["translations"]:
-                    if w == word:
-                        trans = k
-                        done = True
-                        break
-            return trans 
-        
-    def set_vocab(self, vocab):
-        with open(self.vocab_filename_json, 'w') as f:
-            f.write(json.dumps(vocab))
-        self.backup_vocab_file()
-            
-    def merge_vocab(self, new_words, force=False, update=False):
-        vocab = self.get_vocab()
-        for w_from, w_to in new_words:
-            if isinstance(w_from, str):
-                w_from_l = w_from.split(',')
-            else:
-                w_from_l = w_from
-            if w_to in vocab:
-                trans = vocab[w_to]["translations"]
-                if not w_from in trans:
-                  trans.append(w_from)
-            else:
-                if update:
-                   vocab = dict(filter(lambda x: x[1]['translations'] != w_from_l, vocab.items()))
-                vocab[w_to] = {"translations": w_from_l, "lastCorrect": "", "count": 0, "part": ""}   
-        self.set_vocab(vocab)
     
-    def initialize_vocab(self):
-        if not exists(self.vocab_filename_json):
-            with open(self.vocab_filename_json, 'a') as f:
-                f.write(json.dumps({"meta": {
-                    "val_langid": f"{self.to_lang}",
-                    "val_langname": f"{self.to_langname}",
-                    "key_langid": f"{self.from_lang}",
-                    "key_langname": f"{self.from_langname}"
-                }}))
-                
-    def set_default_langs(self, frm, to):
-         with open(f"{DATA_DIR}{sep}default_langs.json", 'w') as f:
-            f.write(json.dumps({"from": frm, "to": to}))
-            
-    def get_default_langs(self):
-        with open(f"{DATA_DIR}{sep}default_langs.json", 'r') as f:
-            default_langs = json.loads(f.read())
-            return default_langs
-                
-    def export_vocab(self):
-        vocab = self.get_vocab()
-        with open(f"{DATA_DIR}{sep}{self.to_lang}_{self.from_lang}_exported_words.csv", "w") as file:
-            csvwriter = csv.writer(file,  quotechar='|',  quoting=csv.QUOTE_NONE)
-            for k,v in vocab.items():
-                if k == "meta": continue
-                row = [k]
-                for w in v["translations"]:
-                    row.append(w)
-                try:
-                    csvwriter.writerow(row)
-                except:
-                    print(f"Bad row: {row}")
-                
-    def check_langs(self):
-        found_from = found_to = False
-        for k,v in self.langs.items():
-            if k == self.from_lang:
-                found_from = True
-                self.from_langname = v["name"]
-            elif k == self.to_lang:
-                found_to = True
-                self.to_langname = v["name"]
-            if found_from and found_to: break
-        if not found_from or not found_to:
-            missing = (self.from_lang if not found_from else "") + (f" {self.to_lang}" if not found_to else "")
-            return f"The following language(s) were specified but are not available: {missing}"
-        else:
-            return None
             
 if __name__ == "__main__":
     parser = ArgumentParser(prog="Vocab Builder", add_help=False,
