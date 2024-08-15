@@ -191,6 +191,7 @@ class VocabBuilder():
                     duplicate_words.add(w3)
                 else:
                     val["translations"].append(w3)
+                    val["part"] = w2
         if extra_translations:
             for w1, w2 in extra_translations:
                 [w1, w2] = [w1.strip(), w2.strip()]
