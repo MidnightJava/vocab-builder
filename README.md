@@ -10,14 +10,14 @@ The user loads the vocabulary information into the app by either importing a csv
 
 1. Create a python virtual environment
 ```
-sudo yum install virtualenv | sudo apt-get install virtualenv
+sudo yum install python3-virtualenv | sudo apt-get install python3-virtualenv
 cd <project location>
-virtualenv .venv -p python3
+virtualenv venv -p python3
 ```
 
 2. Activate the virtual environment
 ```
-.venv/bin/activate
+. ./venv/bin/activate
 ```
 
 3. Install dependencies:
