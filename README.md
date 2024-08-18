@@ -95,3 +95,16 @@ Other Options:
 
 Launch the https://github.com/MidnightJava/vocab-builder-ui web application (see the readme there), and it will connect to the server automatically. You can also test the REST API in the server by looking at server.py and using a web browser or a command-line tool like curl to form an appropriate HTTP request message, using either the GET or POST methods.
 
+### To Build the Python App as a SIngle Executable
+```
+1. cd <project directory>
+
+2. . venv/bin/activate
+
+3. pip install pyinstaller
+
+4. pyinstaller -F vocab_builder/server.py
+
+5. find executable at dist/server
+```
+

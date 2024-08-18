@@ -17,7 +17,7 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from ms_translater_client import MSTranslatorClient
 from contextlib import suppress
 import io
-DATA_DIR = "data"
+DATA_DIR = "../data"
 PARTS_OF_SPEECH_FILE = "parts_of_speech.json"
 
 API_KEY = os.getenv("API_KEY", None)
@@ -28,7 +28,8 @@ if API_KEY is None:
           "https://learn.microsoft.com/en-us/rest/api/cognitiveservices/translator/translator. You can skip this " +
           "if you want to provide word translations manually instead of relying on an external service. In that case, " +
           "launch the program with the -nl option.")
-    sys.exit(0)
+    print(f"CWD: {os.getcwd()}")
+    # sys.exit(0)
 
 class VocabBuilder():
   
@@ -242,7 +243,7 @@ class VocabBuilder():
         def select(entry):
             retval = True
             k,v = entry
-            if k == 'meta':
+            if k == 'meta' or k.strip() == '':
                 retval = False
             else:
               if v["count"] <= self.min_correct:
@@ -262,11 +263,11 @@ class VocabBuilder():
         
         vocab = dict(filter(select, self.get_vocab().items()))
         if self.word_order == "from-to":
-                vals = list(map( lambda item: item[1]['translations'], filter(lambda item: item[0] != "meta", vocab.items())))
+                vals = list(map( lambda item: item[1]['translations'], filter(lambda item: item[0] != "meta" and item[0].strip() != '', vocab.items())))
                 #Now flatten it
                 self.selected_words = [item for sublist in vals for item in sublist]
         else:
-            self.selected_words = list(filter(lambda k: k != "meta", vocab.keys()))
+            self.selected_words = list(filter(lambda k: k != "meta" and k.strip() != '', vocab.keys()))
         self.selected_count = 0
         return len(self.selected_words)
     
@@ -318,13 +319,14 @@ class VocabBuilder():
             with suppress(ValueError):
               # The word to be removed will be given in the oposite language in which
               # the list of selected words is represented.
-              words = word.split(',')
+              words = word.split(',') if isinstance(word, str) else [word]
               word = words[0].strip() if len(words) else ''
               to_remove = self.get_word_in_other_lang(word)
               for word in to_remove:
                 self.selected_words.remove(word)
     
     def get_parts_of_speech(self):
+      print(f"CWD: {os.getcwd()}")
       file = os.path.join(DATA_DIR, PARTS_OF_SPEECH_FILE)
       with open(file, 'r') as f:
         try:

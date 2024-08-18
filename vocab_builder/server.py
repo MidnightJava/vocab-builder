@@ -10,7 +10,8 @@ import os
 api = Flask(__name__)
 
 def start_server():
-    api.run(port=5000)
+    print("STARTING SERVER")
+    api.run(host='0.0.0.0', port=5000)
     
 app = VocabBuilder()
 
@@ -42,6 +43,7 @@ def init():
     def add_header(resp):
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp
+    # return jsonify({"CWD": os.getcwd()})
 
     try:
         app.initialize(no_trans_check = False,
@@ -57,6 +59,18 @@ def init():
         raise BadRequestException(exc.args[0])
     
     return jsonify({"Result": "Initialized"})
+
+@api.route('/alive', methods=['GET'])
+def is_alive():
+  global app
+    
+  @after_this_request
+  def add_header(resp):
+      resp.headers["Access-Control-Allow-Origin"] = "*"
+      resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+      return resp
+  
+  return jsonify({"status": "OK"}), 200
 
 @api.route('/apilookup/set', methods=['POST', 'OPTIONS', 'GET'])
 def set_api_lookup():

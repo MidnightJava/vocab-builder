@@ -132,6 +132,4 @@ dmypy.json
 .vscode
 
 data/*
-
-#auto-py-to-exe output folder
-output
+/dist/
