@@ -17,7 +17,7 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from ms_translater_client import MSTranslatorClient
 from contextlib import suppress
 import io
-DATA_DIR = "../data"
+DATA_DIR = "data"
 PARTS_OF_SPEECH_FILE = "parts_of_speech.json"
 
 API_KEY = os.getenv("API_KEY", None)
