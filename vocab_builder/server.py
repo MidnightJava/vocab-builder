@@ -1,19 +1,40 @@
 #!/bin/env python3
 
-# TODO
-# Add button to save default langs
-# Filter meta entry from vocab list
 from flask import Flask, json, jsonify, request, after_this_request
 from vocab_builder import VocabBuilder
-import os
+import os, signal
+import sys
+import logging
+from threading import Timer
+
+LOGGING_DIR = '/opt/vb-logs'
+LOG_FILE_NAME = 'vb.log'
+
+# logger = logging.getLogger(__name__)
+# FileOutputHandler = logging.FileHandler(os.path.join(LOGGING_DIR, LOG_FILE_NAME))
+
+# logger.addHandler(FileOutputHandler)
+# logger.setLevel(logging.INFO)
+# logger.info("SERVER LOGGING INITIALIZED")
+
+logging.basicConfig(filename="/opt/vb-logs/vb.log", level=logging.INFO, format="%(name)s → %(levelname)s: %(message)s")
+
+
+logging.warning("SERVER LOGGING INITIALZED")
 
 api = Flask(__name__)
+app = VocabBuilder()
+
+def shutdown_server():
+    logging.info('Shutting down server...')
+    os.kill(os.getpid(), signal.SIGINT)
 
 def start_server():
-    print("STARTING SERVER")
-    api.run(host='0.0.0.0', port=5000)
-    
-app = VocabBuilder()
+    logging.info("STARTING SERVER")
+    try:
+      api.run(host='0.0.0.0', port=5000)
+    except Exception as e:
+      logging.error(e)
 
 class NotInitializedException(Exception):
     def __init__(self):
@@ -33,6 +54,7 @@ def error_handler(err):
 
 @api.route('/init', methods=['GET'])
 def init():
+    print("RECEIVED INIT")
     global app
     try:
         lang1, lang2 = parse_request_params(request, 'from_lang', 'to_lang')
@@ -43,7 +65,6 @@ def init():
     def add_header(resp):
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp
-    # return jsonify({"CWD": os.getcwd()})
 
     try:
         app.initialize(no_trans_check = False,
@@ -56,9 +77,24 @@ def init():
           to_lang = lang2,
           cli_launch = False)
     except Exception as exc:
+        # logger.error(f"Init exception {exc}")
         raise BadRequestException(exc.args[0])
     
+    # logger.info('Server initialized')
     return jsonify({"Result": "Initialized"})
+
+@api.route('/kill', methods=['POST', 'OPTIONS', 'GET'])
+def kill():
+  
+  if request.method == "OPTIONS" or request.method == 'GET':
+    return "OK", 200
+  
+  logging.warning('Kill server request')
+  # t = Timer(0.1, kill_server)
+  # t.start()
+  shutdown_server()
+  return jsonify({"status": "OK"}), 200
+
 
 @api.route('/alive', methods=['GET'])
 def is_alive():
@@ -148,6 +184,7 @@ def api_key():
     
 @api.route('/languages/get', methods=['GET'])
 def get_languages():
+    # logger.info("GET LANGUAGES")
     global app
     
     @after_this_request
@@ -186,6 +223,7 @@ def get_default_langs():
 
 @api.route('/partsofspeech/get', methods=['GET'])
 def get_parts_of_speech():
+    # logger.info(f"GET PARTS OF SPEECH ENDPOINT")
     global app
     
     @after_this_request
@@ -193,7 +231,9 @@ def get_parts_of_speech():
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp
     
+    # logger.info(f"GET PARTS OF SPEECH GET PARTS")
     parts = app.get_parts_of_speech()
+    # logger.info(f"GET PARTS OF SPEECH GOT PARTS")
     return jsonify(parts)
 
 @api.route('/partsofspeech/set', methods=['POST', 'OPTIONS', 'GET'])

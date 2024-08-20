@@ -17,7 +17,21 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from ms_translater_client import MSTranslatorClient
 from contextlib import suppress
 import io
-DATA_DIR = "data"
+import logging
+
+LOGGING_DIR = '/opt/vb-logs'
+LOG_FILE_NAME = 'vb.log'
+
+logger = logging.getLogger(__name__)
+FileOutputHandler = logging.FileHandler(os.path.join(LOGGING_DIR, LOG_FILE_NAME))
+
+logger.addHandler(FileOutputHandler)
+logger.setLevel(logging.INFO)
+logger.info("VOCAB BUILDER LOGGING INITIALIZED")
+
+
+
+DATA_DIR = '/data'
 PARTS_OF_SPEECH_FILE = "parts_of_speech.json"
 
 API_KEY = os.getenv("API_KEY", None)
@@ -36,6 +50,9 @@ class VocabBuilder():
     def __init__(self):
       self.initialized = False
       self.client = MSTranslatorClient()
+      current_dir = os.getcwd()
+      logger.info(f"CWD: {current_dir}")
+      logger.info(f"Data Dir: {DATA_DIR}")
 
     def initialize(self, **kwargs):
         for k,v in kwargs.items():
@@ -54,7 +71,7 @@ class VocabBuilder():
             self.from_langname = self.from_lang
             
         self.initialize_vocab()
-        
+                
         if self.cli_launch:
           if self.pr_avail_langs:
               print("Available languages for translation")
@@ -107,6 +124,9 @@ class VocabBuilder():
                 return k
         print(f"Invlaid language: {lang}")
         return None
+    
+    def kill_server(self):
+        sys.exit(0)
     
     """
     CALLED FROM CLI CLIENT OR SERVER
@@ -326,12 +346,15 @@ class VocabBuilder():
                 self.selected_words.remove(word)
     
     def get_parts_of_speech(self):
-      print(f"CWD: {os.getcwd()}")
+      logger.info(f"GET PARTS OF SPEECH: CWD: {os.getcwd()}")
       file = os.path.join(DATA_DIR, PARTS_OF_SPEECH_FILE)
+      logger.info(f"GET PARTS OF SPEECH: FILE PATH: {file}")
       with open(file, 'r') as f:
         try:
           parts = json.load(f)
+          logger.info(f"GET PARTS OF SPEECH: Parts length: {len(parts)}")
         except Exception as e:
+            logger.error(f"GET PARTS OF SPEECH:ERROR: {e}")
             print(e)
             parts = []
         return parts
