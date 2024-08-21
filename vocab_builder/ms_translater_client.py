@@ -15,8 +15,9 @@ params = {
 
 class MSTranslatorClient(TranslatorClient):
   
-  def __init__(self):
+  def __init__(self, api_key_file=''):
     self.api_key = None
+    self.api_key_file = api_key_file
     
   def has_api_key(self):
     return self.api_key is not None
@@ -40,7 +41,11 @@ class MSTranslatorClient(TranslatorClient):
           return None
 
   def get_api_key(self):
-    return self.api_key
+    try:
+      self.api_key = self.api_key if self.api_key is not None else self.read_api_key()
+      return self.api_key
+    except:
+       return ''
   
   def set_api_key(self, api_key):
     self.api_key = api_key
@@ -51,8 +56,16 @@ class MSTranslatorClient(TranslatorClient):
     return None
   
   def save_api_key(self, api_key):
-    with open('./.env', 'w') as f:
-      f.write(f"export API_KEY={api_key}")
+    with open(self.api_key_file, 'w') as f:
+      f.write(api_key)
+  
+  def read_api_key(self):
+    try:
+      with open(self.api_key_file, 'r') as f:
+        contents = f.read()
+        return contents
+    except:
+      return ''
       
   def detect_language(self, text):
       path = '/detect?api-version=3.0'

@@ -9,18 +9,18 @@ from threading import Timer
 
 LOGGING_DIR = '/opt/vb-logs'
 LOG_FILE_NAME = 'vb.log'
+DEFAULT_LISTEN_PORT = 5100
 
-# logger = logging.getLogger(__name__)
-# FileOutputHandler = logging.FileHandler(os.path.join(LOGGING_DIR, LOG_FILE_NAME))
+port = os.environ.get("SERVER_PORT", DEFAULT_LISTEN_PORT)
 
-# logger.addHandler(FileOutputHandler)
-# logger.setLevel(logging.INFO)
-# logger.info("SERVER LOGGING INITIALIZED")
+logger = logging.getLogger(__name__)
+FileOutputHandler = logging.FileHandler(os.path.join(LOGGING_DIR, LOG_FILE_NAME))
 
-logging.basicConfig(filename="/opt/vb-logs/vb.log", level=logging.INFO, format="%(name)s → %(levelname)s: %(message)s")
+logger.addHandler(FileOutputHandler)
+logger.setLevel(logging.INFO)
+logger.info("Server logging initialized")
 
-
-logging.warning("SERVER LOGGING INITIALZED")
+logger.debug("SERVER LOGGING INITIALZED")
 
 api = Flask(__name__)
 app = VocabBuilder()
@@ -30,9 +30,9 @@ def shutdown_server():
     os.kill(os.getpid(), signal.SIGINT)
 
 def start_server():
-    logging.info("STARTING SERVER")
+    logging.info(f"Starting server on port {port}")
     try:
-      api.run(host='0.0.0.0', port=5000)
+      api.run(host='0.0.0.0', port=int(port))
     except Exception as e:
       logging.error(e)
 
@@ -54,7 +54,6 @@ def error_handler(err):
 
 @api.route('/init', methods=['GET'])
 def init():
-    print("RECEIVED INIT")
     global app
     try:
         lang1, lang2 = parse_request_params(request, 'from_lang', 'to_lang')
@@ -77,10 +76,9 @@ def init():
           to_lang = lang2,
           cli_launch = False)
     except Exception as exc:
-        # logger.error(f"Init exception {exc}")
+        logger.error(f"Init exception {exc.message}")
         raise BadRequestException(exc.args[0])
     
-    # logger.info('Server initialized')
     return jsonify({"Result": "Initialized"})
 
 @api.route('/kill', methods=['POST', 'OPTIONS', 'GET'])
@@ -90,8 +88,6 @@ def kill():
     return "OK", 200
   
   logging.warning('Kill server request')
-  # t = Timer(0.1, kill_server)
-  # t.start()
   shutdown_server()
   return jsonify({"status": "OK"}), 200
 

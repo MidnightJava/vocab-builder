@@ -27,32 +27,24 @@ FileOutputHandler = logging.FileHandler(os.path.join(LOGGING_DIR, LOG_FILE_NAME)
 
 logger.addHandler(FileOutputHandler)
 logger.setLevel(logging.INFO)
-logger.info("VOCAB BUILDER LOGGING INITIALIZED")
+logger.debug("App logging initialized")
 
-
-
-DATA_DIR = '/data'
+if os.environ.get("TAURI_BUILD", "None").lower() == 'true':
+    DATA_DIR =  'target/debug/data'
+else:
+  DATA_DIR = '/vb-data'
 PARTS_OF_SPEECH_FILE = "parts_of_speech.json"
-
-API_KEY = os.getenv("API_KEY", None)
-if API_KEY is None:
-    print("*** You must specify an API key ***.\nOne way to do this is to create a file named .env in your home directory, " +
-          "and insert this line: export API_KEY=\"<your API key>\". Get an API key here:  https://portal.azure.com/#home. " +
-          "Then create a free subscription to the Microsoft Translation Service at " +
-          "https://learn.microsoft.com/en-us/rest/api/cognitiveservices/translator/translator. You can skip this " +
-          "if you want to provide word translations manually instead of relying on an external service. In that case, " +
-          "launch the program with the -nl option.")
-    print(f"CWD: {os.getcwd()}")
-    # sys.exit(0)
+API_KEY_FILE_NAME = "api_key"
 
 class VocabBuilder():
   
     def __init__(self):
       self.initialized = False
-      self.client = MSTranslatorClient()
+      self.client = MSTranslatorClient(os.path.join(DATA_DIR, API_KEY_FILE_NAME))
       current_dir = os.getcwd()
       logger.info(f"CWD: {current_dir}")
       logger.info(f"Data Dir: {DATA_DIR}")
+      logger.info(f"SERVER_PORT: {os.environ.get('SERVER_PORT', None)}")
 
     def initialize(self, **kwargs):
         for k,v in kwargs.items():
@@ -60,7 +52,6 @@ class VocabBuilder():
         self.vocab_filename = f"{DATA_DIR}{sep}{self.to_lang}_{self.from_lang}_vocab"
         self.vocab_filename_json = f"{self.vocab_filename}.json"
         self.vocab_filename_csv = f"{self.vocab_filename}.csv"
-        if not self.client.has_api_key(): self.client.set_api_key(API_KEY)
         if not self.no_word_lookup: 
             langs = self.client.get_languages()
             self.langs = langs if langs else {}
@@ -122,10 +113,10 @@ class VocabBuilder():
         for k,v in self.langs.items():
             if lang == v['name'] or lang == v['nativeName']:
                 return k
-        print(f"Invlaid language: {lang}")
+        logger.error(f"Invlaid language: {lang}")
         return None
     
-    def kill_server(self):
+    def kill_app(self):
         sys.exit(0)
     
     """
@@ -346,15 +337,12 @@ class VocabBuilder():
                 self.selected_words.remove(word)
     
     def get_parts_of_speech(self):
-      logger.info(f"GET PARTS OF SPEECH: CWD: {os.getcwd()}")
+      logger.debug("Get aprts of speech")
       file = os.path.join(DATA_DIR, PARTS_OF_SPEECH_FILE)
-      logger.info(f"GET PARTS OF SPEECH: FILE PATH: {file}")
       with open(file, 'r') as f:
         try:
           parts = json.load(f)
-          logger.info(f"GET PARTS OF SPEECH: Parts length: {len(parts)}")
         except Exception as e:
-            logger.error(f"GET PARTS OF SPEECH:ERROR: {e}")
             print(e)
             parts = []
         return parts
@@ -363,7 +351,7 @@ class VocabBuilder():
       try:
           s = json.dumps(parts)
       except:
-          print(f"Uable to parse parts of speech as json: {str(parts)}")
+          logger.error(f"Uable to parse parts of speech as json: {str(parts)}")
           return False
       file = os.path.join(DATA_DIR, PARTS_OF_SPEECH_FILE)
       with open(file, 'w') as f:
