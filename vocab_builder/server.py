@@ -6,10 +6,12 @@ import os, signal
 import sys
 import logging
 from threading import Timer
-
-LOGGING_DIR = '/opt/vb-logs'
-LOG_FILE_NAME = 'vb.log'
+LOGGING_DIR = "/var/log/vocab-builder"
+os.makedirs(LOGGING_DIR, exist_ok=True)
+LOG_FILE_NAME = os.path.join(LOGGING_DIR, "vb.log")
 DEFAULT_LISTEN_PORT = 5100
+
+os.chdir("/")
 
 port = os.environ.get("SERVER_PORT", DEFAULT_LISTEN_PORT)
 
@@ -19,8 +21,6 @@ FileOutputHandler = logging.FileHandler(os.path.join(LOGGING_DIR, LOG_FILE_NAME)
 logger.addHandler(FileOutputHandler)
 logger.setLevel(logging.INFO)
 logger.info("Server logging initialized")
-
-logger.debug("SERVER LOGGING INITIALZED")
 
 api = Flask(__name__)
 app = VocabBuilder()
@@ -76,7 +76,7 @@ def init():
           to_lang = lang2,
           cli_launch = False)
     except Exception as exc:
-        logger.error(f"Init exception {exc.message}")
+        logger.error(f"Init exception {exc}")
         raise BadRequestException(exc.args[0])
     
     return jsonify({"Result": "Initialized"})

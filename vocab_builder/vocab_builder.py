@@ -19,8 +19,10 @@ from contextlib import suppress
 import io
 import logging
 
-LOGGING_DIR = '/opt/vb-logs'
-LOG_FILE_NAME = 'vb.log'
+# LOGGING_DIR = '/opt/vb-logs'
+LOGGING_DIR = "/var/log/vocab-builder"
+os.makedirs(LOGGING_DIR, exist_ok=True)
+LOG_FILE_NAME = os.path.join(LOGGING_DIR, "vb.log")
 
 logger = logging.getLogger(__name__)
 FileOutputHandler = logging.FileHandler(os.path.join(LOGGING_DIR, LOG_FILE_NAME))
@@ -29,10 +31,12 @@ logger.addHandler(FileOutputHandler)
 logger.setLevel(logging.INFO)
 logger.debug("App logging initialized")
 
-if os.environ.get("TAURI_BUILD", "None").lower() == 'true':
-    DATA_DIR =  'target/debug/data'
-else:
-  DATA_DIR = '/vb-data'
+# if os.environ.get("TAURI_BUILD", "None").lower() == 'true':
+#     DATA_DIR =  'target/debug/data'
+# else:
+# DATA_DIR =os.path.join(os.getenv("HOME"), ".local/share/vocabulary-builder/data")
+DATA_DIR = "/opt/test-vb-data"
+# os.makedirs(DATA_DIR, exist_ok=True)
 PARTS_OF_SPEECH_FILE = "parts_of_speech.json"
 API_KEY_FILE_NAME = "api_key"
 
@@ -143,10 +147,14 @@ class VocabBuilder():
             file.seek(0)
             csvFile = csv.reader(io.TextIOWrapper(file, encoding='utf-8'), quotechar='|',  quoting=csv.QUOTE_NONE)
         elif filename:
-            file = open(filename, 'r')
-            print(f"{len(file.readlines())} words to import")
-            file.seek(0)
-            csvFile = csv.reader(file, quotechar='|',  quoting=csv.QUOTE_NONE)
+            try:
+              file = open(filename, 'r')
+              print(f"{len(file.readlines())} words to import")
+              file.seek(0)
+              csvFile = csv.reader(file, quotechar='|',  quoting=csv.QUOTE_NONE)
+            except:
+                print(f"Import failed. File {filename} does not exist.")
+                return
         else:
             print("Import failed. No CSV file was specified.")
             return
@@ -232,22 +240,24 @@ class VocabBuilder():
     # CALLED FROM SERVER
     # Download saved CSV vocab file to browser
     def export_vocab_csv(self):
-        with open(f"{self.vocab_filename_csv}") as file:
-            if file:
-              return file.read()
-            else:
-              print(f"File {self.vocab_filename_csv} does not exist")
-              return []
+        try:
+          with open(f"{self.vocab_filename_csv}") as file:
+              if file:
+                return file.read()
+        except:
+          print(f"File {self.vocab_filename_csv} does not exist")
+          return []
     
     # CALLED FROM SERVER
     # Download saved JSON vocab file to browser
     def export_vocab_json(self):
-        with open(f"{self.vocab_filename_json}") as file:
-            if file:
-              return file.read()
-            else:
-              print(f"File {self.vocab_filename_json} does not exist")
-              return []
+        try:
+          with open(f"{self.vocab_filename_json}") as file:
+              if file:
+                return file.read()
+        except:
+          print(f"File {self.vocab_filename_json} does not exist")
+          return []
     
   
     def select_words(self):
@@ -339,13 +349,13 @@ class VocabBuilder():
     def get_parts_of_speech(self):
       logger.debug("Get aprts of speech")
       file = os.path.join(DATA_DIR, PARTS_OF_SPEECH_FILE)
-      with open(file, 'r') as f:
-        try:
+      try:
+        with open(file, 'r') as f:
           parts = json.load(f)
-        except Exception as e:
-            print(e)
-            parts = []
-        return parts
+          return parts
+      except Exception as e:
+            logging.error(f"Cannot get parts of speech. File {file} does not exist")
+            return []
     
     def set_parts_of_speech(self, parts):
       try:
@@ -354,7 +364,7 @@ class VocabBuilder():
           logger.error(f"Uable to parse parts of speech as json: {str(parts)}")
           return False
       file = os.path.join(DATA_DIR, PARTS_OF_SPEECH_FILE)
-      with open(file, 'w') as f:
+      with open(file, 'w+') as f:
           f.write(s)
       return True
 
@@ -404,7 +414,7 @@ class VocabBuilder():
     
     # Write vocab entries in memory to json file
     def set_vocab(self, vocab):
-        with open(self.vocab_filename_json, 'w') as f:
+        with open(self.vocab_filename_json, 'w+') as f:
             f.write(json.dumps(vocab))
         self.backup_vocab_file()
             
@@ -429,7 +439,7 @@ class VocabBuilder():
     
     def initialize_vocab(self):
         if not exists(self.vocab_filename_json):
-            with open(self.vocab_filename_json, 'a') as f:
+            with open(self.vocab_filename_json, 'w') as f:
                 f.write(json.dumps({"meta": {
                     "val_langid": f"{self.from_lang}",
                     "val_langname": f"{self.from_langname}",
@@ -438,18 +448,21 @@ class VocabBuilder():
                 }}))
                 
     def set_default_langs(self, frm, to):
-         with open(f"{DATA_DIR}{sep}default_langs.json", 'w') as f:
+         with open(f"{DATA_DIR}{sep}default_langs.json", 'w+') as f:
             f.write(json.dumps({"from": frm, "to": to}))
             
     def get_default_langs(self):
-        with open(f"{DATA_DIR}{sep}default_langs.json", 'r') as f:
-            default_langs = json.loads(f.read())
-            return default_langs
+        try:
+          with open(f"{DATA_DIR}{sep}default_langs.json", 'r') as f:
+              default_langs = json.loads(f.read())
+              return default_langs
+        except:
+            return {}
 
     # Save the in-memory vocab as a csv file            
     def save_vocab_csv(self):
         vocab = self.get_vocab()
-        with open(f"{DATA_DIR}{sep}{self.to_lang}_{self.from_lang}_exported_words.csv", "w") as file:
+        with open(f"{DATA_DIR}{sep}{self.to_lang}_{self.from_lang}_exported_words.csv", "w+") as file:
             csvwriter = csv.writer(file,  quotechar='|',  lineterminator='\n', quoting=csv.QUOTE_NONE)
             for k,v in vocab.items():
                 if k == "meta": continue
