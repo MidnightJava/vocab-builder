@@ -2,15 +2,18 @@
 
 from dotenv import load_dotenv
 import os
+from os import listdir
+from os.path import isfile, exists, sep, join
 import shutil
 load_dotenv()
 
 import json
-from os.path import exists, sep
-import sys
+from os import path
+from pathlib import Path
+import shutil
+import sys, errno
 import readchar
 import csv
-from collections import defaultdict
 from datetime import date
 from random import randint
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
@@ -18,25 +21,31 @@ from ms_translater_client import MSTranslatorClient
 from contextlib import suppress
 import io
 import logging
+from logging.config import dictConfig
 
-# LOGGING_DIR = '/opt/vb-logs'
-LOGGING_DIR = "/var/log/vocab-builder"
-os.makedirs(LOGGING_DIR, exist_ok=True)
+VB_DIR = "vocab_builder"
+LOGGING_DIR = os.environ.get("VB_LOGGING_DIR", None) or \
+  os.path.join(os.getenv("HOME"), VB_DIR, "logs")
+
+#In pyinstaller, exist_ok will be ignored
+try:
+  Path(LOGGING_DIR).mkdir(parents=True, exist_ok=True)
+except OSError as exception:
+  if exception.errno != errno.EEXIST:
+      raise
 LOG_FILE_NAME = os.path.join(LOGGING_DIR, "vb.log")
 
-logger = logging.getLogger(__name__)
-FileOutputHandler = logging.FileHandler(os.path.join(LOGGING_DIR, LOG_FILE_NAME))
+from log_config import config
+dictConfig(config(LOG_FILE_NAME))
 
-logger.addHandler(FileOutputHandler)
-logger.setLevel(logging.INFO)
-logger.debug("App logging initialized")
-
-# if os.environ.get("TAURI_BUILD", "None").lower() == 'true':
-#     DATA_DIR =  'target/debug/data'
-# else:
-# DATA_DIR =os.path.join(os.getenv("HOME"), ".local/share/vocabulary-builder/data")
-DATA_DIR = "/opt/test-vb-data"
-# os.makedirs(DATA_DIR, exist_ok=True)
+#Determine if we're running as a bundle created by PyInstaller
+isBundled =  getattr( sys, 'frozen', False )
+if isBundled:
+  INITIAL_DATA_DIR =  path.abspath(path.join(sys._MEIPASS, 'initial-data'))
+else:
+    INITIAL_DATA_DIR =  path.abspath(path.join(path.dirname(__file__), '..', 'initial-data'))
+DATA_DIR = os.environ.get("VB_DATA_DIR", None) or \
+  os.path.join(os.getenv("HOME"), VB_DIR, "data")
 PARTS_OF_SPEECH_FILE = "parts_of_speech.json"
 API_KEY_FILE_NAME = "api_key"
 
@@ -46,13 +55,18 @@ class VocabBuilder():
       self.initialized = False
       self.client = MSTranslatorClient(os.path.join(DATA_DIR, API_KEY_FILE_NAME))
       current_dir = os.getcwd()
-      logger.info(f"CWD: {current_dir}")
-      logger.info(f"Data Dir: {DATA_DIR}")
-      logger.info(f"SERVER_PORT: {os.environ.get('SERVER_PORT', None)}")
+      logging.info(f"CWD: {current_dir}")
+      logging.info(f"Data Dir: {DATA_DIR}")
+      logging.info(f"SERVER_PORT: {os.environ.get('SERVER_PORT', None)}")
 
     def initialize(self, **kwargs):
         for k,v in kwargs.items():
             setattr(self, k, v)
+        try:
+          if not self.data_files_exist():
+            self.copy_initial_data()
+        except Exception as exception:
+          logging.error(f"Failed to cerate initial data files. {exception}")
         self.vocab_filename = f"{DATA_DIR}{sep}{self.to_lang}_{self.from_lang}_vocab"
         self.vocab_filename_json = f"{self.vocab_filename}.json"
         self.vocab_filename_csv = f"{self.vocab_filename}.csv"
@@ -65,7 +79,7 @@ class VocabBuilder():
             self.to_langname = self.to_lang
             self.from_langname = self.from_lang
             
-        self.initialize_vocab()
+        if self.lang_attrs_set(): self.initialize_vocab()
                 
         if self.cli_launch:
           if self.pr_avail_langs:
@@ -87,7 +101,42 @@ class VocabBuilder():
           elif self.test_vocab:
               self.run_test_vocab()
         self.initialized = True
+        
+    def copy_initial_data(self):
+      try:
+        #In pyinstaller, exist_ok will be ignored
+        os.makedirs(DATA_DIR, exist_ok=True)
+      except OSError as exception:
+        if exception.errno != errno.EEXIST:
+            if exception.errno == errno.ENOTDIR:
+                logging.error(f"Unable to create the data directory at {DATA_DIR} because a regular file exists there.")
+            raise
+      initial_files = [f for f in listdir(INITIAL_DATA_DIR) if isfile(join(INITIAL_DATA_DIR, f))]
+      logging.info(f"Copy {len(initial_files)} files from {INITIAL_DATA_DIR} to {DATA_DIR}")
+      for file in initial_files:
+          if not exists(join(DATA_DIR, file)):
+            logging.info(f"Copy {file}")
+            shutil.copy(join(INITIAL_DATA_DIR, file), DATA_DIR)
+          
+    def data_files_exist(self):
+      if isfile(DATA_DIR): raise Exception(f"Unable to create the data directory at {DATA_DIR} because a regular file exists there.")
+      if not exists(INITIAL_DATA_DIR): return False
+      found = True
+      for file in listdir(INITIAL_DATA_DIR):
+        if not exists(join(DATA_DIR, file)):
+          found = False
+          break
+      return found
     
+    def lang_attrs_set(self):
+        res = (
+          hasattr(self, 'from_lang') and self.from_lang and 
+          hasattr(self, 'from_langname') and self.from_langname and
+          hasattr(self, 'to_lang') and self.to_lang and
+          hasattr(self, 'to_langname') and self.to_langname
+        )
+        return res
+
     def get_api_key(self):
       return self.client.get_api_key()
     
@@ -117,7 +166,7 @@ class VocabBuilder():
         for k,v in self.langs.items():
             if lang == v['name'] or lang == v['nativeName']:
                 return k
-        logger.error(f"Invlaid language: {lang}")
+        logging.error(f"Invlaid language: {lang}")
         return None
     
     def kill_app(self):
@@ -347,7 +396,7 @@ class VocabBuilder():
                 self.selected_words.remove(word)
     
     def get_parts_of_speech(self):
-      logger.debug("Get aprts of speech")
+      logging.debug("Get parts of speech")
       file = os.path.join(DATA_DIR, PARTS_OF_SPEECH_FILE)
       try:
         with open(file, 'r') as f:
@@ -361,7 +410,7 @@ class VocabBuilder():
       try:
           s = json.dumps(parts)
       except:
-          logger.error(f"Uable to parse parts of speech as json: {str(parts)}")
+          logging.error(f"Uable to parse parts of speech as json: {str(parts)}")
           return False
       file = os.path.join(DATA_DIR, PARTS_OF_SPEECH_FILE)
       with open(file, 'w+') as f:
@@ -494,7 +543,8 @@ class VocabBuilder():
     ######################
     # CLI-only functions #
     ######################
-    def run_test_vocab(self):        
+    def run_test_vocab(self):
+        if not self.lang_attrs_set(): logging.info("Lang attrs not set")
         done = False
         lang1 = {"id": self.from_lang, "name": self.from_langname}
         lang2 = {"id": self.to_lang, "name": self.to_langname}
@@ -519,6 +569,7 @@ class VocabBuilder():
                 self.mark_correct(word if self.word_order == 'to-from' else trans)
     
     def run_add_vocab(self, no_trans_check):
+        if not self.lang_attrs_set(): logging.info("Lang attrs not set")
         done = False
         new_words = []
         lang1 = {"id": self.to_lang, "name": self.to_langname}

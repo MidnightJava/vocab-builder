@@ -103,7 +103,7 @@ Launch the https://github.com/MidnightJava/vocab-builder-ui web application (see
 
 3. pip install pyinstaller
 
-4. pyinstaller -F vocab_builder/server.py
+4. pyinstaller -F --add-data initial-data:initial-data vocab_builder/server.py 
 
 5. find executable at dist/server
 ```

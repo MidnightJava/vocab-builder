@@ -1,40 +1,26 @@
 #!/bin/env python3
 
-from flask import Flask, json, jsonify, request, after_this_request
+from flask import Flask, jsonify, request, after_this_request
 from vocab_builder import VocabBuilder
 import os, signal
-import sys
 import logging
-from threading import Timer
-LOGGING_DIR = "/var/log/vocab-builder"
-os.makedirs(LOGGING_DIR, exist_ok=True)
-LOG_FILE_NAME = os.path.join(LOGGING_DIR, "vb.log")
+
 DEFAULT_LISTEN_PORT = 5100
-
-os.chdir("/")
-
 port = os.environ.get("SERVER_PORT", DEFAULT_LISTEN_PORT)
-
-logger = logging.getLogger(__name__)
-FileOutputHandler = logging.FileHandler(os.path.join(LOGGING_DIR, LOG_FILE_NAME))
-
-logger.addHandler(FileOutputHandler)
-logger.setLevel(logging.INFO)
-logger.info("Server logging initialized")
 
 api = Flask(__name__)
 app = VocabBuilder()
 
 def shutdown_server():
-    logging.info('Shutting down server...')
+    api.logger.info('Shutting down server...')
     os.kill(os.getpid(), signal.SIGINT)
 
 def start_server():
-    logging.info(f"Starting server on port {port}")
+    api.logger.info(f"Starting server on port {port}")
     try:
       api.run(host='0.0.0.0', port=int(port))
     except Exception as e:
-      logging.error(e)
+      api.logger.error(e)
 
 class NotInitializedException(Exception):
     def __init__(self):
@@ -49,7 +35,7 @@ class BadRequestException(Exception):
 @api.errorhandler(NotInitializedException)
 @api.errorhandler(BadRequestException)
 def error_handler(err):
-    print(err.msg)
+    api.logger.error(err.msg)
     return jsonify({"Error": err.msg}), 200
 
 @api.route('/init', methods=['GET'])
@@ -59,11 +45,13 @@ def init():
         lang1, lang2 = parse_request_params(request, 'from_lang', 'to_lang')
     except BadRequestException as exc:
         lang1, lang2 = "", ""
+        raise
     
     @after_this_request
     def add_header(resp):
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp
+    # if not lang1 or not lang2: return jsonify({"Result": "No language info provided"})
 
     try:
         app.initialize(no_trans_check = False,
@@ -76,7 +64,7 @@ def init():
           to_lang = lang2,
           cli_launch = False)
     except Exception as exc:
-        logger.error(f"Init exception {exc}")
+        api.logger.error(f"Init exception {exc}")
         raise BadRequestException(exc.args[0])
     
     return jsonify({"Result": "Initialized"})
@@ -87,7 +75,7 @@ def kill():
   if request.method == "OPTIONS" or request.method == 'GET':
     return "OK", 200
   
-  logging.warning('Kill server request')
+  api.logger.warning('Kill server request')
   shutdown_server()
   return jsonify({"status": "OK"}), 200
 
@@ -219,7 +207,6 @@ def get_default_langs():
 
 @api.route('/partsofspeech/get', methods=['GET'])
 def get_parts_of_speech():
-    # logger.info(f"GET PARTS OF SPEECH ENDPOINT")
     global app
     
     @after_this_request
@@ -227,9 +214,7 @@ def get_parts_of_speech():
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp
     
-    # logger.info(f"GET PARTS OF SPEECH GET PARTS")
     parts = app.get_parts_of_speech()
-    # logger.info(f"GET PARTS OF SPEECH GOT PARTS")
     return jsonify(parts)
 
 @api.route('/partsofspeech/set', methods=['POST', 'OPTIONS', 'GET'])
@@ -293,7 +278,7 @@ def select_words():
         raise NotInitializedException
     
     count = app.select_words()
-    print(f"{count} WORDS SELECTED")
+    api.logger.debug(f"{count} WORDS SELECTED")
     return jsonify({"Result": count}), 200
 
 @api.route('/vocab/next_word', methods=['GET'])
@@ -332,8 +317,6 @@ def delete_vocab_entry():
     if not app.initialized:
         raise NotInitializedException
     
-    # word_entry = json.loads(json_str)
-    print(entry)
     deleted = []
     try:
         if not isinstance(entry, list):
@@ -366,7 +349,6 @@ def add_vocab_entry():
     if not app.initialized:
         raise NotInitializedException
     
-    # word_entry = json.loads(json_str)
     app.merge_vocab([(word_entry['from'], word_entry['to'], word_entry['part_of_speech'])], force=True)
     
     return jsonify({}),200
@@ -392,7 +374,6 @@ def update_vocab_entry():
     if not app.initialized:
         raise NotInitializedException
     
-    # word_entry = json.loads(json_str)
     app.merge_vocab([(word_entry['from'], word_entry['to'], word_entry['part_of_speech'])], force=True, update=True)
     
     return jsonify({}),200
@@ -446,7 +427,6 @@ def set_default_langs():
     if not app.initialized:
         raise NotInitializedException
     
-    # word_entry = json.loads(json_str)
     app.set_default_langs(frm=default_langs["from"], to=default_langs["to"])
     
     return jsonify({}),200
