@@ -1,5 +1,5 @@
 python-dotenv
 requests
 uuid
-readchar
+readchar==4.0.5
 flask
