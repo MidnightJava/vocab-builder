@@ -3,29 +3,38 @@
 from flask import Flask, jsonify, request, after_this_request
 from vocab_builder import VocabBuilder
 import os, signal
-import logging
+import socket
 
-DEFAULT_LISTEN_PORT = 5100
+#Set the same value as VITE_SERVER_PORT in the Vue app for use outside of Tauri
+DEFAULT_LISTEN_PORT = 5000
 port = os.environ.get("SERVER_PORT", DEFAULT_LISTEN_PORT)
 
 api = Flask(__name__)
 app = VocabBuilder()
+
+def is_port_in_use(port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('0.0.0.0', port)) == 0
 
 def shutdown_server():
     api.logger.info('Shutting down server...')
     os.kill(os.getpid(), signal.SIGINT)
 
 def start_server():
-    api.logger.info(f"Starting server on port {port}")
-    try:
-      api.run(host='0.0.0.0', port=int(port))
-    except Exception as e:
-      api.logger.error(e)
+    if is_port_in_use(int(port)):
+      api.logger.error(f"Port {port} is in use by abnother program. " +
+        "Either identify and stop that program, or start the server with a different port.")
+    else:
+      api.logger.info(f"Starting server on port {port}")
+      try:
+        api.run(host='0.0.0.0', port=int(port))
+      except Exception as e:
+        api.logger.error(e)
 
 class NotInitializedException(Exception):
     def __init__(self):
-        self.code = 400
-        self.msg = "Not Initialized"
+      self.code = 400
+      self.msg = "Not Initialized"
         
 class BadRequestException(Exception):
     def __init__(self, msg):
@@ -67,7 +76,7 @@ def init():
         api.logger.error(f"Init exception {exc}")
         raise BadRequestException(exc.args[0])
     
-    return jsonify({"Result": "Initialized"})
+    return jsonify({"Result": "Initialized"}), 200
 
 @api.route('/kill', methods=['POST', 'OPTIONS', 'GET'])
 def kill():

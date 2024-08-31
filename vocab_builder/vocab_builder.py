@@ -138,10 +138,11 @@ class VocabBuilder():
         return res
 
     def get_api_key(self):
-      return self.client.get_api_key()
+      return os.environ.get("API_KEY", self.client.get_api_key())
     
     def set_api_key(self, api_key):
-      return self.client.set_api_key(api_key)
+      # Don't save the key to a file if it exists in the environment
+      return os.environ.get("API_KEY", self.client.set_api_key(api_key))
     
     def set_api_lookup(self, api_lookup):
         self.no_word_lookup = api_lookup == False
