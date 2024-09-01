@@ -12,7 +12,7 @@ from os import path
 from pathlib import Path
 import shutil
 import sys, errno
-import readchar
+# import readchar
 import csv
 from datetime import date
 from random import randint
@@ -565,9 +565,9 @@ class VocabBuilder():
             trans = self.get_saved_translation(word)
             print(f"\n{lang1['name']} Translation: {trans}\n")
             print("Press Enter if you knew the translation, any other key if you did not ")
-            c = readchar.readkey()
-            if c == '\n':
-                self.mark_correct(word if self.word_order == 'to-from' else trans)
+            # c = readchar.readkey()
+            # if c == '\n':
+            #     self.mark_correct(word if self.word_order == 'to-from' else trans)
     
     def run_add_vocab(self, no_trans_check):
         if not self.lang_attrs_set(): logging.info("Lang attrs not set")
