@@ -3,3 +3,4 @@ requests
 uuid
 readchar==4.0.5
 flask
+gunicorn

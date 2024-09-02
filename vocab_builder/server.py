@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 from flask import Flask, jsonify, request, after_this_request
+from gevent.pywsgi import WSGIServer
 from vocab_builder import VocabBuilder
 import os, signal
 import socket
 
-#Set the same value as VITE_SERVER_PORT in the Vue app for use outside of Tauri
-DEFAULT_LISTEN_PORT = 5000
-port = os.environ.get("SERVER_PORT", DEFAULT_LISTEN_PORT)
+DEFAULT_LISTEN_PORT = 5023
+
+#We use the prefix VITE_ so the frontend and backend can
+#be set from a single value.
+port = os.environ.get("VITE_SERVER_PORT", DEFAULT_LISTEN_PORT)
 
 api = Flask(__name__)
+http_server = WSGIServer(('', int(port)), api)
 app = VocabBuilder()
 
 def is_port_in_use(port):
@@ -26,7 +30,7 @@ def start_server():
     else:
       api.logger.info(f"Starting server on port {port}")
       try:
-        api.run(host='0.0.0.0', port=int(port))
+        http_server.serve_forever()
       except Exception as e:
         api.logger.error(e)
 
