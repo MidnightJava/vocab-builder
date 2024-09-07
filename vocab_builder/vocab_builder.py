@@ -8,6 +8,7 @@ import shutil
 load_dotenv()
 
 import json
+import platform
 from os import path
 from pathlib import Path
 import shutil
@@ -23,9 +24,11 @@ import io
 import logging
 from logging.config import dictConfig
 
+home_dir_var_name = "HOMEPATH" if platform.system() == "Windows" else "HOME"
+
 VB_DIR = "vocab_builder"
 LOGGING_DIR = os.environ.get("VB_LOGGING_DIR", None) or \
-  os.path.join(os.getenv("HOME"), VB_DIR, "logs")
+  os.path.join(os.getenv(home_dir_var_name), VB_DIR, "logs")
 
 #In pyinstaller, exist_ok will be ignored
 try:
@@ -45,7 +48,7 @@ if isBundled:
 else:
     INITIAL_DATA_DIR =  path.abspath(path.join(path.dirname(__file__), '..', 'initial-data'))
 DATA_DIR = os.environ.get("VB_DATA_DIR", None) or \
-  os.path.join(os.getenv("HOME"), VB_DIR, "data")
+  os.path.join(os.getenv(home_dir_var_name), VB_DIR, "data")
 PARTS_OF_SPEECH_FILE = "parts_of_speech.json"
 API_KEY_FILE_NAME = "api_key"
 
