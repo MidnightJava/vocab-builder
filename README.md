@@ -104,7 +104,7 @@ Launch the https://github.com/MidnightJava/vocab-builder-ui web application (see
 3. pip install pyinstaller
 
 4.  pyinstaller -F --add-data initial-data:initial-data vocab_builder/server.py
- 4.a Windoiws: C:\Users\mal\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\Scripts\pyinstaller.exe -F --add-data initial-data:initial-data vocab_builder/server.py
+ 4.a Windows: C:\Users\mal\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\Scripts\pyinstaller.exe -F --add-data initial-data:initial-data vocab_builder/server.py
 
 5. find executable at dist/server
 ```
