@@ -480,7 +480,12 @@ class VocabBuilder():
                 w_from_l = w_from
             if w_to in vocab:
                 trans = vocab[w_to]["translations"]
-                if not w_from in trans:
+                found = False
+                for w in w_from_l:
+                  if w.strip().lower() in map(lambda x: x.strip().lower(), trans):
+                    found = True
+                    break
+                if not found:
                   trans.append(w_from)
                 vocab[w_to]['part'] = part_of_speech
             else:
